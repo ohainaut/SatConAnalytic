@@ -13,11 +13,11 @@ import sys
 sys.path.append('/home/ohainaut/Documents/ESO/E2E/SatelliteConstellations/SIMULATIONS/')
 
 from matplotlib import ticker
-from ConAn.conanplot import gyrd
+from conanplot import gyrd
 
 # import ConAn routines
-import ConAn.conan as ca
-import ConAn.conanplot as cp
+import conan as ca
+import conanplot as cp
 
 #print('ConAn:objplot -in')
 def helphelp():

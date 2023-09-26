@@ -8,7 +8,7 @@
 import numpy as np
 
 # ConAn: constants
-from ConAn.constants import mu, re, we, extn, mag550, magAzCut, magAzBright, magAngPeak 
+from constants import mu, re, we, extn, mag550, magAzCut, magAzBright, magAngPeak 
 
 
 #---------------------------------------------------------------------------

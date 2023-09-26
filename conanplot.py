@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 
-import ConAn.conan as ca
+import conan as ca
 
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 colors = ["black", "lawngreen", "yellow", "orange", "red", "darkred"]
@@ -438,7 +438,7 @@ def findPreset(telinslabel):
         
 
     else:
-        print("Telescope "+telinslabel + " unknown")
+        print("Error: Telescope "+telinslabel + " unknown")
         exit()
 
 
@@ -453,7 +453,7 @@ def findPreset(telinslabel):
 def findConstellations(constellationsll):
     # Assemble a set of constellations for preset constellationll
 
-    from ConAn.constellations import SL1, SL2, hSL1, hSL2, OW2, OW2r, GW, AK, yesturday, constoday, SLtoday, csl1a1, ESP
+    from constellations import SL1, SL2, hSL1, hSL2, OW2, OW2r, GW, AK, yesturday, constoday, SLtoday, csl1a1, ESP
 
     constDir = {
         "YESTURDAY": {  "constellations" : yesturday,

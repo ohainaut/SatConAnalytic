@@ -19,13 +19,13 @@ sys.path.append(os.path.dirname(__file__)+"/../")
 
 
 from matplotlib import ticker
-from ConAn.conanplot import gyrd
+from conanplot import gyrd
 
 
 # import ConAn routines
-import ConAn.conan as ca
-import ConAn.conanplot as cp
-from ConAn.constants import mag550
+import conan as ca
+import conanplot as cp
+from constants import mag550
 
 #----- config
 step = 0.75 #deg >~1. Smaller values take forever
