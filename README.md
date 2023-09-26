@@ -94,6 +94,8 @@ Colors give the fraction of observations that would be lost, or the density of s
 
 ## Files
 
+The code is far from elegant, as I was learning Python on-the-fly... Please be compassionately forgiving. 
+
 - conan.py	main functions for ConAn
 - conanplot.py	plotting functions for ConAn
 - constants.py	generic constants for ConAn
