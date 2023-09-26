@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-# SatConAnalytic
-# main plot:  calendar view for a given object
+# ConAn
+# Constellation Analytic simulations
+#
+# main plot:  plot the satellite density over a calendar for a given object
 
 import numpy as np
 import matplotlib
@@ -8,17 +10,16 @@ matplotlib.use('Agg')  # to avoid Xdisplay issues in remote
 
 import matplotlib.pyplot as plt
 import sys
-import os
-sys.path.append(os.path.dirname(__file__)+"/../")
+sys.path.append('/home/ohainaut/Documents/ESO/E2E/SatelliteConstellations/SIMULATIONS/')
 
 from matplotlib import ticker
-from SatConAnalytic.conanplot import gyrd
+from ConAn.conanplot import gyrd
 
-# import SatConAnalytic routines
-import SatConAnalytic.conan as ca
-import SatConAnalytic.conanplot as cp
+# import ConAn routines
+import ConAn.conan as ca
+import ConAn.conanplot as cp
 
-
+#print('ConAn:objplot -in')
 def helphelp():
     out = """
     objplot 
@@ -38,20 +39,18 @@ def helphelp():
               magbloom: for those brighter, trailf=1=full
     -s telName* -i instrName*
                 (*: overwrites presets)
-    -S do not shade low elev
-    -L do not label the plot
-    -M BRIGHT FAINT ALL OBS EFFECT
+    -M BRIGHT FAINT ALL OBS EFFECT --> HARDCODED
          All sats, restrict to bright/faint (wrt magbloom), convert into effect on obs.
     """
     print(out)
 
-outpath = "/home/ohainaut/public_html/outsideWorld/"
-#outpath = "./"
+#outpath = "/home/ohainaut/public_html/outsideWorld/"
+outpath = "./"
 
 maglimoff = 1.75 # 1.75: 1/5sig ; 1.: 2/5sig
 magbloomoff = -2.5
 magcutflag = 'OBS'
-magcutflag = 'EFFECT'
+magcutflag = 'EFFECT' ## 4MOST
 fovw = -99.
 
 constellationsll = 'SLOWGWAK'
@@ -84,7 +83,7 @@ for i in np.arange(0,len(sys.argv)):
     if sys.argv[i] == '-d': #delta
         i += 1
         deo = float(sys.argv[i])
-    if sys.argv[i] == '-L': #obj name
+    if sys.argv[i] == '-n': #obj name
         i += 1
         objlabel = sys.argv[i]
     if sys.argv[i] == '-l': #latitude
@@ -238,6 +237,8 @@ elif magcutflag == 'OBS':
     cblab = "Number of satellite trails per exposure"
     lvmin = -2.5  # log limits for the colour scale
     lvmax = 1.2  #
+#    lvmin = 0   # log limits for the colour scale # 4MOST
+#    lvmax = 2.7  # 4MOST
 
 elif magcutflag == 'EFFECT':
     ds = trailf * densSatObs + (1.-trailf)* densSatBloom
@@ -246,6 +247,9 @@ elif magcutflag == 'EFFECT':
     cblab = "Fraction of exposure lost"
     lvmin = -3.5  # log limits for the colour scale
     lvmax = 2.2  #
+    lvmax = .2  #
+    lvmin = -3.5  # log limits for the colour scale # 4MOST
+#
 
     cmap = gyrd    
     
@@ -307,7 +311,7 @@ lsun = plt.clabel(csun, fmt='%.0f$^o$')
 
 # color bar
 cbar = fig.colorbar(csat)
-cbar.set_ticks(np.log10(np.array([0.0005,0.001,0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.,2.,5.,10.,20.,50.])))
+cbar.set_ticks(np.log10(np.array([0.0005,0.001,0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.,2.,5.,10.,20.,50.,100.,200.])))
 cbar.set_ticklabels( [ "{:.2g}".format(x) for x in 10.**(cbar.get_ticks())])
 cbar.set_label(cblab)
 
@@ -318,10 +322,10 @@ _ = ax.set_title('Object: {} $\\alpha$: {:.2f}$^o$, $\\delta$: {:.2f}$^o$'.forma
 #ax.grid()
 
 #_ = ax.text(0.,-28,'(b)', fontsize=14)
-_ = ax.text(0.,-32,'Constellation: {} ({:.0f} sat.)'.format(constellationsl,sum(consNum)), fontsize=8)
+_ = ax.text(30.,-32,'Constellation: {} ({:.0f} sat.)'.format(constellationsl,sum(consNum)), fontsize=8, ha='left')
 
 
-_ = ax.text(0,-40,'Telescope: {}, lat= {:.2f}$^o$'.format(telescope,lat),fontsize=8)
+_ = ax.text(30,-40,'Telescope: {}, lat= {:.2f}$^o$'.format(telescope,lat),fontsize=8, ha='left')
 
 if fovl < 1./60.:
     fovll = '{:.2f}\"'.format(fovl*3600.)
@@ -330,7 +334,7 @@ elif fovl < 1./6.:
 else:
     fovll = '{:.2f}$^o$'.format(fovl)
 
-_ = ax.text(0.,-48,'Instrument: {} FoV= {} Resolution= {:.1g}\" Exp.T= {:.0f}s'.format(instrument, fovll, resol*3600., expt), fontsize=8)
+_ = ax.text(30.,-48,'Instrument: {} FoV= {} Resolution= {:.1g}\" Exp.T= {:.0f}s'.format(instrument, fovll, resol*3600., expt), fontsize=8, ha='left')
 
 
 

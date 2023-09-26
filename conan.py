@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# SatConAnalytic
+# ConAn
 # Constellation Analytic simulations
-# definitions and functions
-
+#
+#
+# conan.py: definitions and functions
+#==============================================================================
 import numpy as np
 
-# SatConAnalytic: constants
-from SatConAnalytic.constants import mu, re, we, extn, mag550, magAzCut, magAzBright, magAngPeak 
-
-
+# ConAn: constants
+from ConAn.constants import mu, re, we, extn, mag550, magAzCut, magAzBright, magAngPeak 
 
 
 #---------------------------------------------------------------------------
@@ -41,9 +41,9 @@ def get_sun(jd):
 
 
 #---------------------------------------------------------------------------
-
 def loadConstellations(constellations):
-    #input: an array of constellations from SatConAnalytic/constellations.py
+    #input: an array of constellations from ConAn/constellations.py
+    
     consLab = np.array([])
     consAlt = np.array([])
     consNum = np.array([])
@@ -59,8 +59,8 @@ def loadConstellations(constellations):
         consAlt = np.append(consAlt, float(myCons[5]))
     
     return  consLab, consNum, consPla, consNPl, consInc, consAlt
-#---------------------------------------------------------------------------
 
+#---------------------------------------------------------------------------
 def velPosAng(delta,satInc):
     # delta = lat, latitude of the satellite
     # satInc: inclination of shell
@@ -75,7 +75,8 @@ def velPosAng(delta,satInc):
 #---------------------------------------------------------------------------
 
 def myarcsin(x):
-    # extends arcsin 
+    # extends arcsin
+    
     myx1 = np.where(x > 1., 1., x)
     myx2 = np.where(myx1 < -1., -1., myx1)
     myarcsin = np.arcsin(myx2)
@@ -90,6 +91,7 @@ def satCount(l1,l2,inc,N):
     myinc = np.where(inc > 90., 180.-inc, inc) # for retrogr orbits
     satCount = N/np.pi * (myarcsin(l2/myinc) - myarcsin(l1/myinc))
     return satCount
+
 #---------------------------------------------------------------------------
 
 def satNumDensity(delta1,delta2,satInc,satNum):
@@ -102,7 +104,8 @@ def satNumDensity(delta1,delta2,satInc,satNum):
     #   accounts for the shrinking sky at higher latitudes.
     
     satNumDensity = satCount(delta1,delta2,satInc,satNum) \
-        / ( 360.*180./np.pi * (np.sin(np.radians(delta2)) - np.sin(np.radians(delta1))) ) # size of the band
+        / ( 360.*180./np.pi * (np.sin(np.radians(delta2)) - np.sin(np.radians(delta1))) )
+                   # size of the band
     
     return satNumDensity
 #---------------------------------------------------------------------------
@@ -478,59 +481,6 @@ def AzEl2Vel(alpha, delta, Delta,lat,inc,alt):
     return AngularVel
 #-------------------------------------------------------------------------
 
-def OBSOLETEmodelOneConst(AzElIn,lat, alphasIn,deltasIn, magcut, inc,alt,num ):
-    AzElreshape = np.reshape(AzElIn,(2,AzElIn.shape[1]*AzElIn.shape[2]))
-    
-    step = AzElIn[1,1,0] - AzElIn[1,0,0]
-    # geocentric equ. alpha,delta of sat, and   observatory dist, angle 
-    alpha, delta, Delta, costheta = AltAz2Delta(lat,alt,AzElreshape)
-    
-    # geocentric equ. rect. of satellite
-    xyz = RaDecAlt2xyz(alpha,delta, alt)
-
-    # Velocities
-    AngularVel = AzEl2Vel(alpha, delta, Delta,lat,inc,alt)  
-    
-    #Density    
-    # get delta of top of field of view
-    wAzEl = np.copy(AzElreshape)
-    wAzEl[1] += step
-    _, deltaTop, _, _ = AltAz2Delta(lat,alt,wAzEl)
-
-    # get delta of bottom of field
-    wAzEl = np.copy(AzElreshape)
-    wAzEl[1] -= step
-    _, deltaBot, _, _ = AltAz2Delta(lat,alt,wAzEl)
-
-    # density at this place
-    densitys = satNumDensity(deltaBot, deltaTop,inc,num) \
-                   * (Delta/(re+alt))**2 / costheta 
-
-    # Illuminated satellites
-    illum = solIllum(xyz,alphas, deltas)
-    
-    wdensityi = densitys * illum
-    densityi  = np.reshape(wdensityi,      (AzElIn.shape[1],AzElIn.shape[2]) )  
-    densityvi = np.reshape(wdensityi*AngularVel, (AzElIn.shape[1],AzElIn.shape[2]) )
-
-    wvel = np.reshape(AngularVel, (AzElIn.shape[1],AzElIn.shape[2]) )
-
-    #  magnitude of the satellites:
-    mag = np.reshape( mag550 + 5.*np.log10(Delta/550.) + extn*(Delta/alt -1.) ,
-                      (AzElIn.shape[1],AzElIn.shape[2]) )
-    flux = 10.**(-0.4*mag) /3600.**2 * np.reshape(wdensityi, (AzElIn.shape[1],AzElIn.shape[2])   )
-        # scale for altitude
-        # correct for extinction (-1: m550 is the mag at zenith in the atmosph).
-        # scale for sq.arcsec/sq.deg
-        # scale for nmbr of sat
-
-        
-    # filter the bright satellites
-    densityiMagcut = np.copy(densityi)
-    densityiMagcut[ mag > magcut ] = 0.
-    densityviMagcut = np.copy(densityvi)
-    densityviMagcut[ mag > magcut ] = 0.
-    return densityi,densityvi, densityiMagcut, densityviMagcut, flux, mag #,wvel # was used for special plot
 
 def modelOneConstMag(AzEl,lat, alphas,deltas,
                      inc,alt,num ):

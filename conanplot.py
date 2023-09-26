@@ -1,29 +1,37 @@
-#SatAn
-# plots
+#!/usr/bin/env python3
+# CatAn
+# Constellation Analytic simulations
+#
+# plots functions
+#==============================================================================
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 
-import SatConAnalytic.conan as ca
-
+import ConAn.conan as ca
 
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 colors = ["black", "lawngreen", "yellow", "orange", "red", "darkred"]
 
-#for losses
+# color map for losses
 gyrd = LinearSegmentedColormap.from_list("mycmap", colors)
 
-#for airmass
+# colors for airmass
 colors = ["darkred","red","orange","yellow","green","lawngreen"]
 cairmap = LinearSegmentedColormap.from_list("mycmap", colors)
 
-# for sun altitude
+# colors for sun altitude
 colors = ['darkblue','b','deepskyblue','paleturquoise']
 csunmap = LinearSegmentedColormap.from_list("mycmap", colors)
 
 
-def findPreset(telinslabel):
+#------------------------------------------------------------------------------
 
+def findPreset(telinslabel):
+    # load parameters for a preset telinslabel telescope/instrument
+    
+    
     maglimoff = 1.75 # 1.75: 1/5sig ; 1.: 2/5sig
     magbloomoff = -2.5
 
@@ -205,6 +213,19 @@ def findPreset(telinslabel):
         magbloom    = magbloomoff + 8.5 # threshold magnitude for blinding instruments
         trailf      = 5./(fovl*3600.) #" wide trail
 
+
+    elif telinslabel == "XSHOOTER":
+        telescope   = 'VLT'
+        lat         = -24.62 #latitude
+        instrument  = "X-SHOOTER"
+        expt        = 1000. #s
+        fovl        = 10./3600. #deg
+        fovw        = 1./3600. #deg
+        resol       = 1./3600. # deg
+        maglim      = maglimoff + 20. # detection limit for expt
+        magbloom    = magbloomoff + 8.5 # threshold magnitude for blinding instruments
+        trailf      = 5./(fovl*3600.) #" wide trail
+
     elif telinslabel == "UVES1h":
         telescope   = 'VLT'
         lat         = -24.62 #latitude
@@ -224,7 +245,8 @@ def findPreset(telinslabel):
         expt        = 1200. #s
         fovl        = 2.3   #deg FoV of the focal plane
         resol       = 3/3600. # deg Fibre = 3"
-        maglim      = maglimoff + 20.51 # detection limit for expt for LRS
+        maglim      = maglimoff + 19.75 # 18.75#=from Genv simul # 20.51 # detection limit for expt for LRS
+        maglim      = maglimoff +  20.51 # detection limit for expt for LRS
         magbloom    = magbloomoff + 11. # threshold magnitude for blinding instruments
         trailf      = 1.3/2436 # 1.3 fibre hit per trail
 
@@ -239,6 +261,37 @@ def findPreset(telinslabel):
         magbloom    = magbloomoff + 11. # threshold magnitude for blinding instruments
         trailf      = 1.3/2436 # 1.3 fibre hit per trail
 
+    elif telinslabel == "LAMOST": 
+        telescope   = 'LAMOST'
+        lat         = 40.40 #latitude
+        instrument  = "MRS"
+        expt        = 1200. #s
+        fovl        = 5.   #deg FoV of the focal plane
+        resol       = 3.3/3600. # deg Fibre = 3"
+        maglim      = maglimoff + 99. # detection limit for expt for MRS
+        magbloom    = magbloomoff + 11. # threshold magnitude for blinding instruments
+        trailf      = 0.43 # 1.3 fibre hit per trail, /4000 for fraction
+
+    elif telinslabel == "MOONS-LR": 
+        telescope   = 'VLT'
+        lat         = -24.62 #latitude
+        instrument  = "MOONS-LR"
+        expt        = 150. #s
+        fovl        = .210   #deg FoV of the focal plane
+        resol       = 0.5/3600. # deg Fibre = 3"
+        maglim      = maglimoff + 21.3 # detection limit for expt for MRS
+        magbloom    = magbloomoff -99. # threshold magnitude for blinding instruments
+        trailf      = 2.1/2000 # fibre hit per trail, /n_fibre for fraction
+    elif telinslabel == "MOONS-HR": 
+        telescope   = 'VLT'
+        lat         = -24.62 #latitude
+        instrument  = "MOONS-LR"
+        expt        = 600. #s
+        fovl        = .210   #deg FoV of the focal plane
+        resol       = 0.5/3600. # deg Fibre = 3"
+        maglim      = maglimoff + 18.73 # detection limit for expt for MRS
+        magbloom    = magbloomoff -99. # threshold magnitude for blinding instruments
+        trailf      = 2.1/2000 # fibre hit per trail, /n_fibre for fraction
 
     elif telinslabel == "ESPRESSO":
         telescope   = 'VLT'
@@ -385,7 +438,7 @@ def findPreset(telinslabel):
         
 
     else:
-        print(telinslabel + " unknown")
+        print("Telescope "+telinslabel + " unknown")
         exit()
 
 
@@ -395,63 +448,62 @@ def findPreset(telinslabel):
 
 
 
+#------------------------------------------------------------------------------
 
 def findConstellations(constellationsll):
-    from SatConAnalytic.constellations import SL1, SL2, OW2, OW2r, GW, AK, yesturday, constoday, SLtoday, csl1a1
-    
-    if constellationsll == "YESTURDAY":
-        constellations = yesturday
-        constellationsl = "Pre-const LEOs"
-    elif constellationsll == "TODAY":
-        constellations = np.concatenate((yesturday,constoday))
-        constellationsl = "LEOs today"
-    elif constellationsll == "SLtoday":
-        constellations = SLtoday
-        constellationsl = "SL today"
-        
-    elif constellationsll == "SL2OW2":
-        constellations = np.concatenate((SL2,OW2))
-        constellationsl = "SL2 & OW2"
-    elif constellationsll == "SL1":
-        constellations = SL1
-        constellationsl = "SL1"
-    elif constellationsll == "csl1a1":
-        constellations = [csl1a1]
-        constellationsl = "SL1 A1"
-        
-    elif constellationsll == "SLOW2":
-        constellations = np.concatenate((SL1, SL2, OW2))
-        constellationsl = "SL1+2 & OW2"
-    elif constellationsll == "OW2r":
-        constellations = OW2r
-        constellationsl = "OW2 red."
-    elif constellationsll == "OW2":
-        constellations = OW2
-        constellationsl = "OW2"
-    elif constellationsll == "SL1":
-        constellations = (SL1)
-        constellationsl = "SL1"
-    elif constellationsll == "SL":
-        constellations = np.concatenate((SL1, SL2))
-        constellationsl = "SL1+2"
-    elif constellationsll == "SLOWGW":
-        constellations = np.concatenate((SL1, SL2, OW2r, GW))
-        constellationsl = "SL1+2, OW2r, GW1+2"
-    elif constellationsll == "SLOWGWAK":
-        constellations = np.concatenate((SL1, SL2, OW2r, GW, AK))
-        constellationsl = "SL1+2, OW2r, GW1+2, AK"
-    elif constellationsll == "SLOWr":
-        constellations = np.concatenate((SL1, SL2, OW2r))
-        constellationsl =  "SL1+2 & OW2 red."
+    # Assemble a set of constellations for preset constellationll
+
+    from ConAn.constellations import SL1, SL2, hSL1, hSL2, OW2, OW2r, GW, AK, yesturday, constoday, SLtoday, csl1a1, ESP
+
+    constDir = {
+        "YESTURDAY": {  "constellations" : yesturday,
+                        "constellationsl" : "Pre-const LEOs" },
+        "TODAY": {      "constellations" : np.concatenate((yesturday,constoday)),
+                        "constellationsl" : "LEOs today" },
+        "SLtoday": {    "constellations" : SLtoday,
+                        "constellationsl" : "SL today"},
+        "SL2OW2": {     "constellations" : np.concatenate((SL2,OW2)),
+                        "constellationsl" : "SL2 & OW2"},
+        "csl1a1": {     "constellations" : [csl1a1],
+                        "constellationsl" : "SL1 A1"},
+        "SLOW2": {      "constellations" : np.concatenate((SL1, SL2, OW2)),
+                        "constellationsl" : "SL1+2 & OW2"},
+        "OW2r": {       "constellations" : OW2r,
+                        "constellationsl" : "OW2 reduced"},
+        "OW2": {        "constellations" : OW2,
+                        "constellationsl" : "OW2 original"},
+        "SL1": {        "constellations" : (SL1),
+                        "constellationsl" : "SL1"},
+        "SL": {         "constellations" : np.concatenate((SL1, SL2)),
+                        "constellationsl" : "SL1+2"},
+        "SLhigh": {     "constellations" : np.concatenate((hSL1, hSL2)),
+                        "constellationsl" : "SL1+2 HIGH"},
+        "SLOWGW": {     "constellations" : np.concatenate((SL1, SL2, OW2r, GW)),
+                        "constellationsl" : "SL1+2, OW2r, GW1+2"},
+        "SLOWGWAK": {   "constellations" : np.concatenate((SL1, SL2, OW2r, GW, AK)),
+                        "constellationsl" : "SL1+2, OW2r, GW1+2, AK"},
+        "SLOWr": {      "constellations" : np.concatenate((SL1, SL2, OW2r)),
+                        "constellationsl" :  "SL1+2 & OW2 red."},
+        "ALL": {        "constellations" : np.concatenate((SL1, SL2, OW2r, GW, AK, ESP)),
+                        "constellationsl" : "SL1+2, OW2r, GW1+2, AK, E-Sp"},
+        "ESPACE": {     "constellations" : (ESP),
+                        "constellationsl" :  "E-Space"}
+        }
+
+    if constellationsll in constDir:
+        return constDir[constellationsll]['constellationsl'], constDir[constellationsll]['constellations']
     else:
-        print('[findConstellations]==> define a constellation, eg -C SLOWGW')
-        print('          ({} not found)'.format(constellationsll))
-        exit()
-    return constellationsl, constellations
+        print('List of available constellations:')
+        for c in constDir:
+            print(c ,":  ", constDir[c]['constellationsl'])
+        exit(1)
     
 
+#------------------------------------------------------------------------------
 
 def initPolPlot(ax):
+    # initialize a polar plot
+    
     plt.rcParams.update({'font.size': 15})
     _ = ax.set_theta_zero_location('N')  
     _ = ax.set_rticks([30,60,70,80,90])
@@ -461,8 +513,14 @@ def initPolPlot(ax):
     _ = ax.set_rlim(0.,90)
     return
 
+#------------------------------------------------------------------------------
 
 def plotOneDens(ax, AzEl, dens, label):
+    # plot a density function
+    # ax: axis object where to plot
+    # AzEl: array with the azimut and elevations
+    # dens: the density array to be plotted
+    # label: label...
     
     cmap = 'magma'
     clab = 'cyan'
@@ -486,9 +544,10 @@ def plotOneDens(ax, AzEl, dens, label):
     ax.set_title(label)
     return
 
+#------------------------------------------------------------------------------
 
 def plotDens(AzEl, nplot, densities, labels, plotLabel):
-    
+    # plot a series of density distributions
     
     if nplot == 1:
         fig = plt.figure(figsize=(8,8))
@@ -509,8 +568,11 @@ def plotDens(AzEl, nplot, densities, labels, plotLabel):
     
     return
 
+#------------------------------------------------------------------------------
 
 def azlab(ax,x,y,lab,size=12,alpha=0):
+    # write labels at (x,y) on a polar plot in ax
+
     rlab = np.sqrt(x*x + y*y)*90.
     azlab = np.arctan2(-x,y)
        
@@ -525,6 +587,7 @@ def azlab(ax,x,y,lab,size=12,alpha=0):
     t.set_bbox(dict(alpha=alpha,facecolor='white',edgecolor='none'))
     return azlab,rlab
 
+#------------------------------------------------------------------------------
 
 def drawHADec(lat):
     # draw the HA and Dec lines in an altaz plot
