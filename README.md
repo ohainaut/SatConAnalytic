@@ -103,6 +103,7 @@ The code is far from elegant, as I was learning Python on-the-fly... Please be c
 
 - obsplot.py	main interface to plot the sky over an observatory
 - objplot.py	main interface to plot an object's calendar
-- eleccount.py	hack to measure/plot the number of sat as a
-		function of elevation
-- sequenceplot.py examples of sequential calls
+
+## Other implementation
+
+Another implementation of our analytical simulations is available at [Cees Bassa's](https://github.com/cbassa/satconsim) . 
