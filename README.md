@@ -13,7 +13,7 @@ The simulators are also available as [web-tools](https://www.eso.org/~ohainaut/s
 
 ### ObsPlot
 
-Generates a map-of-the-sky
+Generates a contamination map-of-the-sky for a given observatory at a given time.
 
 ```
 obsplot -d deltasun -a alphasun -e elevsun -l latitude*
@@ -50,7 +50,7 @@ obsPlot can also generate maps of the satellite density (sat/sq.deg), and map of
 
 ### ObjPlot
 
-Generates a visibility calendar for an object.
+Generates a contamination calendar for an astronomical object.
 
 ```
 objplot 
