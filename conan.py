@@ -2,7 +2,7 @@
 # ConAn
 # Constellation Analytic simulations
 #
-#
+# *
 # conan.py: definitions and functions
 #==============================================================================
 import numpy as np

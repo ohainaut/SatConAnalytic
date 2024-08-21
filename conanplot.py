@@ -389,7 +389,18 @@ def findPreset(telinslabel):
         trailf = 1
         magbloom = -999.     
 
-    
+    elif telinslabel == "ALMA":
+        telescope   = 'ALMA'
+        lat         = -24.62 #latitude
+        instrument  = "beam"
+        expt        = 1. #s
+        fovl        = 30./3600. #deg
+        resol       = 30./3600. # deg
+        maglim      = 99. # detection limit for expt
+        magbloom    = -99. # threshold magnitude for blinding instruments
+        trailf      = 1 #" wide trail
+
+
     elif telinslabel == "TrailDens":
         telescope = ' '
         lat = -24.6 #latitude

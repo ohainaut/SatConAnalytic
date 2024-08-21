@@ -29,8 +29,8 @@ from constants import mag550
 
 #----- config
 step = 0.75 #deg >~1. Smaller values take forever
-#outpath = "/home/ohainaut/public_html/outsideWorld/"
-outpath = "./"
+outpath = "/home/ohainaut/public_html/outsideWorld/"
+#outpath = "./"
 
 
 #------Arguments
@@ -238,10 +238,10 @@ while icons < len(consInc):
 if args.plotflag:
     print( "Satellite magnitudes in [{:.2f},{:.2f}]".format(magmax,magmin))
     print( "Satellite eff. mag.  in [{:.2f},{:.2f}]".format(mageffmax,mageffmin))
-    print('Values at zenith:', AzEl[:,-1,-1])
-    print('Sat density [n/sq.dg]', round(densSatAll[-1,-1],4))
-    print('Sat vel (last constellation) [deg/s]', round(veli[-1,-1],4))
-    print('Diffuse mag',  -2.5*np.log10(fluxSatTotal[-1,-1]))
+    print(f'\nFolliwing output for zenith: (AzAlt={AzEl[:,-1,-1]})')
+    print('- Sat density [n/sq.dg]', round( densSatAll[-1,-1],  4))
+    print('- Sat velocity (for last constellation) [deg/s]', round(veli[-1,-1],4))
+    print(f'- Diffuse mag [mag/sq/arcsec]: {-2.5*np.log10(fluxSatTotal[-1,-1]):.2f}' )
 
 # output file
 outfileroot = "{}_{}_{}_{:02d}_{:02d}".format(args.telinslabel,args.constellations,args.magcut,int(args.lat),int(-args.elevs))
@@ -299,6 +299,7 @@ else:
 cmap = "magma"
 
 # set limits for the colormap
+
 lvmin = -2.5
 lvmax = np.log10(30)##< MAXIMUM STANDARD
 #lvmax = np.log10(5000)#
@@ -341,7 +342,7 @@ else: # other specific (including EFFECT)
     dens    =  ds* args.fovl*args.fovw + dv * args.fovl * args.expt
              # trailf already accounted for in ds and dv
      
-    ldens   = np.log10(dens)
+    ldens   = np.nan_to_num(np.log10(dens ), neginf=np.log10( np.min( dens[ dens > 0] )))
     densobs = densSatObs * args.fovl*args.fovw +  densVelObs* args.fovl *args.expt
                      # number of observable trails
 
@@ -356,9 +357,14 @@ else: # other specific (including EFFECT)
             EffTot   += np.average(dens[i,:]   ) * np.cos(np.radians(AzEl[1,i,1]))
             TrailTot += np.average(densobs[i,:]) * np.cos(np.radians(AzEl[1,i,1]))
             icount += 1
+            
     EffTot   = EffTot  /icount
     TrailTot = TrailTot/icount
-    print("Aver. effect on exposures: Loss {:.3g}/1.; Trails: {:.3g}/exp".format( EffTot, TrailTot))
+
+
+    print(f'Effect on exposures (at Zenith): Loss fraction: {dens[-1,-1]:.3g}/1.; Trails: {densobs[-1,-1]:.3g}/exp')
+    print(f'Effect on exp. (aver above {aircut}): Loss fraction: {EffTot:.3g}/1.; Trails: {TrailTot:.3g}/exp')
+
     outstring += " {} {}".format(EffTot,TrailTot)
 
     
@@ -388,11 +394,18 @@ else:
     ccon = 'k'
     tickformat = "{:.1f}".format
 
+
+    #ldens stat
+    lvmax = np.max( ldens ) # np.percentile( ldens, 95.)
+    lvmin = np.min(ldens) # np.percentile( ldens, 5.)
+
+    #print(f'log min max {lvmin} {lvmax}')
+    
     ldens[ ldens > lvmax  ] = lvmax
     ldens[ ldens < lvmin  ] = lvmin
 
     cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1], ldens , 
-                      levels=np.arange(lvmin,lvmax,0.01),
+                      levels=np.linspace(lvmin,lvmax,100),  # NUMBER OF LEVELS
                       vmin=lvmin, vmax=lvmax ,
                       extend='both',
                       cmap=cmap)
@@ -434,9 +447,14 @@ if args.scalebarflag:
         densl = "Surface brightness [ % of sky] ($m_{sky} = $"+"{:.2f}".format(skymag-5)+")]"
 
     else:
-        cbar.set_ticks(np.log10(np.array([0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.,2.,5.,10.,20.,50.,100.,200.,500., 1000., 2000.,5000.,])))
-#        cbar.set_ticks(np.log10(np.array([0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.,2.,5.,10.,20.,50.])))
-        cbar.set_ticklabels( [ "{:5.2g}".format(x) for x in 10.**cbar.get_ticks()])
+        myticks = np.log10(np.array([0.00002,0.00005,0.0001,0.0002,0.0005,0.001,0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.,2.,5.,10.,20.,50.,100.,200.,500., 1000., 2000.,5000.,]))
+        myticks = myticks[ myticks >= lvmin -.35 ]
+        myticks = myticks[ myticks <= lvmax +.35 ]
+        cbar.set_ticks(myticks)
+        cbar.set_ticklabels( [ "{:5.2g}".format(x) for x in 10.**myticks])
+
+        #        cbar.set_ticks(np.log10(np.array([0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.,2.,5.,10.,20.,50.])))
+        #cbar.set_ticklabels( [ "{:5.2g}".format(x) for x in 10.**cbar.get_ticks()])
 
 
     cbar.set_label(densl)
