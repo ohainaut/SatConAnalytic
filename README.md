@@ -10,29 +10,35 @@ A generic introduction to the issue of satellite constellations and their impact
 
 The simulators are also available as [web-tools](https://www.eso.org/~ohainaut/satellites/simulators.html).
 
+Jump to section [Script Usage](#Script-Usage) Script Usage for the simulator scripts.
 
 ## Library
 
-conan.py is the main simulation library. The main function is modelOneConstMag. It returns the parameters for Eq.1 in [Bassa+22](https://ui.adsabs.harvard.edu/link_gateway/2022A&A...657A..75B/doi:10.1051/0004-6361/202142101), eg to compute rho_sat and sigma_sat for
+conan.py is the main simulation library. The main function is modelOneConstMag. It returns the parameters for Eq.1 in [Bassa+22](https://ui.adsabs.harvard.edu/link_gateway/2022A&A...657A..75B/doi:10.1051/0004-6361/202142101), eg to compute $\rho_{\rm sat}$ and $\sigma_{\rm sat}$ for deriving $N_{\rm trails}$:
 
-N_trail = rho_sat * Area_FoV + sigma_sat * t_exp * L_FoV
+$N_{\rm trail} = \rho_{\rm sat} \times A_{\rm FoV} + \sigma_{\rm sat} \times t_{\rm exp} \times L_{\rm FoV}$
 
 where 
-- N_trail is the number of trails in the field,
-- rho_sat is the density of satellites [N/sq.deg]
-- Area_FoV is the area of the field [sq.deg]
-- sigma_sat = rho_sat * omega_sat
-  - sigma_sat is the trail density [N/deg/s]
-  - omega_sat the angular velocity of the satellites [deg/s]
-- t_exp the exposure time [s]
-- L_FoV the diametre (or lenght) of the FoV.
+- $N_{\rm trails}$ is the number of trails in the Field of View,
+- $\rho_{\rm sat}$ is the density of satellites [N/sq.deg]
+- $A_{\rm FoV}$ is the area of the field [sq.deg]
+- $\sigma_{\rm sat} = \rho_{\rm sat} \times \omega_{\rm sat}$
+  - $\sigma_{\rm sat}$ is the trail density [N/deg/s]
+  - $\omega_{\rm sat}$ the angular velocity of the satellites [deg/s]
+- $t_{\rm  exp}$ the exposure time [s]
+- $L_{\rm FoV}$ the diametre (or lenght) of the FoV.
 
 The firs term corresponds to the number of satellites present instantenously in the field, 
 the second term corresponds to the number of trails entering the field of view during the exposure.
 
-''' modelOneConstMag(AzEl,lat, sunAlpha,sunDelts,
-                     inc,alt,num ):
-    '''Model one shell over a set of Az,El pointings
+modelOneConstMag also returns the approx magnitude of the satellites present at Az,El, using a very simple model.
+
+
+``` 
+modelOneConstMag(AzEl,lat, 
+                 sunAlpha,sunDelts,
+                 inc,alt,num ):
+    Model one shell over a set of Az,El pointings
     IN
     - AzEl: array [ array of Azimuths, array of Elevations] on which the
       constellation shall be evaluated. Both in [deg]
@@ -49,7 +55,7 @@ the second term corresponds to the number of trails entering the field of view d
             np.reshape(wdensityi,  (AzEl.shape[1],AzEl.shape[2]) ) ,\
         np.reshape(wAngularVel, (AzEl.shape[1],AzEl.shape[2]) ),\
         mag
-'''
+```
 
 
 conanplot.py has a series of functions used for the plots in the two high-level applications obsplot and objplot.
@@ -231,7 +237,7 @@ Photo:          Photographic Camera from Brussels
 ALMA:           ALMA beam
 ```
 
-## Usage
+## Script Usage
 
 This package comes with 2 ready-to-use scripts. They can use pre-defined instruments or define the instrument with command line parameters.
 
