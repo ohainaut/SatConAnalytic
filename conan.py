@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-# ConAn
-# Constellation Analytic simulations
+# SatConAnalytic - Satellite Constellation Analytic simulations
+# conan.py: definitions and generic constellation functions
 #
-# *
-# conan.py: definitions and functions
-#==============================================================================
+
 import numpy as np
 
-# ConAn: constants
-from constants import mu, re, we, extn, mag550, magAzCut, magAzBright, magAngPeak 
-
+# SatConAn: 
+import constants 
+import constellations
 
 #---------------------------------------------------------------------------
 def get_sun(jd):
-    # in: full julian day
-    # out:
-    #   RA and Dec (both degrees) of the Sun
-    
+    '''Compute coordinates of the Sun
+
+    IN: JD full julian day
+    OUT: RA and Dec (both degrees) of the Sun
+    '''
+
+
     # fast sun
     n = jd - 2451545.0
 
@@ -40,33 +41,46 @@ def get_sun(jd):
     return alpha, delta
 
 
-#---------------------------------------------------------------------------
-def loadConstellations(constellations):
-    #input: an array of constellations from ConAn/constellations.py
+#------------------------------------------------------------------------------
     
-    consLab = np.array([])
-    consAlt = np.array([])
-    consNum = np.array([])
-    consPla = np.array([])
-    consNPl = np.array([])
-    consInc = np.array([])
-    for myCons in constellations:
-        consLab = np.append(consLab, myCons[0])
-        consNum = np.append(consNum, int(myCons[1]))
-        consPla = np.append(consPla, int(myCons[2]))
-        consNPl = np.append(consNPl, int(myCons[3]))
-        consInc = np.append(consInc, float(myCons[4]))
-        consAlt = np.append(consAlt, float(myCons[5]))
-    
-    return  consLab, consNum, consPla, consNPl, consInc, consAlt
+def findConstellations(constellationsll):
+    '''Assemble a Constellations object (set of constellations)
+    for a list of constellations.
 
-#---------------------------------------------------------------------------
-def velPosAng(delta,satInc):
-    # delta = lat, latitude of the satellite
-    # satInc: inclination of shell
-    # return: the two position angles (up and down)
+    in: list of constellations ['SL1', 'SL2', 'OWr2']  
+        or one of the preset codes defined below
+
+    out: a Constellations object
+    '''
+
+    if   constellationsll == 'SL' :  constellationsll = ['SL1', 'SL2']
+    elif constellationsll == 'OW' :  constellationsll = ['OW2r']
+    elif constellationsll == 'TODAY':constellationsll = ['YESTURDAY', 'TODAYconst']
+    elif constellationsll == 'SLOWGWAK':constellationsll = ['YESTURDAY',
+                                                            'SL1','SL2',
+                                                            'OW2r',
+                                                            'GW',
+                                                            'AK' ]
+    elif constellationsll == 'ALL' :  constellationsll = ['YESTURDAY',
+                                                          'SL1', 'SL2', 
+                                                          'OW2r', 
+                                                          'GW', 'AK', 'ESP']
+
+    return constellations.metaConstellation(constellationsll)
     
-    # properly deals with retrograde orbits (with satInc > 90)
+#---------------------------------------------------------------------------
+
+def velPosAng(delta,satInc):
+    '''Compute the velocity position angles for a list of satellites.
+
+    in:
+    - delta = lat, latitude of the satellite(s) [deg]
+    - satInc: inclination of shell [deg]
+    
+    out: the two position angles (up and down) [deg]
+    
+    Note: deals properly with retrograde orbits (with satInc > 90)
+    '''
 
     sintheta = np.cos(np.radians(satInc))/np.cos(np.radians(delta))
     theta1 = np.degrees(np.arcsin(sintheta))
@@ -75,7 +89,11 @@ def velPosAng(delta,satInc):
 #---------------------------------------------------------------------------
 
 def myarcsin(x):
-    # extends arcsin
+    '''extended arcsin to any input value
+
+    IN: x, the value from which arcsin must be computed, float, ]-4e4, 4e4[
+    OUT: arcsin(x) [radians] 
+    '''
     
     myx1 = np.where(x > 1., 1., x)
     myx2 = np.where(myx1 < -1., -1., myx1)
@@ -85,39 +103,54 @@ def myarcsin(x):
 #---------------------------------------------------------------------------
 
 def satCount(l1,l2,inc,N):
-    # returns number of satellites between l1 and l2,
-    # constellation of inc., N satellites
+    '''Number of satellites between two latitudes.
+
+    IN:
+    - l1, l2: the two latitudes considered [deg]
+    - inc: the inclination of the satellites
+    - N: number of satellites in the shell
+    OUT:
+    - number of satellites with l1<= lat <= l2
+    '''
     
     myinc = np.where(inc > 90., 180.-inc, inc) # for retrogr orbits
-    satCount = N/np.pi * (myarcsin(l2/myinc) - myarcsin(l1/myinc))
-    return satCount
+    return  N/np.pi * (myarcsin(l2/myinc) - myarcsin(l1/myinc))
 
 #---------------------------------------------------------------------------
 
 def satNumDensity(delta1,delta2,satInc,satNum):
-    # delta1,2 =  lat: latitude of the field: min, max.
+    '''Density of satellites in a field
+
+    IN:    
+    - delta1,2 = min and max latitude [deg] of the field
+    - satNum: total number of sat in the shell
+    - satInc: inclination of shell
     
-    # satNum: total number of sat in shell
-    # satInc: inclination of shell
-    
-    # returns: the density of satellite at delta lat, in sat/sq.deg.
-    #   accounts for the shrinking sky at higher latitudes.
+    OUT: the density of satellite at the field [sat/sq.deg]
+
+    Note: accounts for the shrinking sky at higher latitudes.
+    '''
     
     satNumDensity = satCount(delta1,delta2,satInc,satNum) \
         / ( 360.*180./np.pi * (np.sin(np.radians(delta2)) - np.sin(np.radians(delta1))) )
-                   # size of the band
-    
+        # number of satellites / size of the band
     return satNumDensity
+    
 #---------------------------------------------------------------------------
 
 
 def integrateSat(ElLim, AzEl, density ):
-    #IN
-    #   ElLims: vector of the elevetions above which we want the sat counts
-    #   AzEl: matrix of Az and El
-    #   density: n density of satellites
-    #OUT
-    #   ElCum: number of satellites above ElLim
+    '''count the total number of satellites above an elevation
+
+    IN
+    - ElLims: vector of the elevetions above which we want the sat counts [deg]
+      The elevations are expected to come sorted by decreasing values (eg [60, 40, 20])
+    - AzEl: matrix of Az and El
+    - density: n density of satellites over the AzEl matrix
+    
+    OUT
+    - number of satellites above ElLim (vector, same size as ElLim)
+    '''
     
     ElCum = np.zeros_like(ElLim)
     Eli = 0
@@ -125,20 +158,21 @@ def integrateSat(ElLim, AzEl, density ):
     wCum = 0. # integrator
 
     
-    i = len(AzEl[1,:,0]) -1
-    step = AzEl[1,1,0] - AzEl[1,0,0]
+    i = len(AzEl[1,:,0]) -1 # we start at zenith
+    step = AzEl[1,1,0] - AzEl[1,0,0] # step in elevation
     
-    while i >=0:
+    while i >=0: # scan elevation rings
         if AzEl[1,i,0] <= ElLim[Eli]:
+            # close one of the requested elevations
             ElCum[Eli] = wCum
             Eli += 1
         
-        areaEl = np.degrees(2*np.pi*np.cos(np.radians( AzEl[1,i,0] ))) * step
-        averd =  np.average(density[i])
+        areaElev = np.degrees(2*np.pi*np.cos(np.radians( AzEl[1,i,0] ))) * step
+        averDensity =  np.average(density[i])
                 
-        wCum += averd * areaEl
+        wCum += averDensity * areaElev # integrate
 
-        i -= 1
+        i -= 1 # next elevation ring
 
     if Eli < len(ElCum):
         ElCum[Eli] = wCum
@@ -146,8 +180,15 @@ def integrateSat(ElLim, AzEl, density ):
 #----------------------------------------------------------------------
 
 def Pol2Rec(AzEl,R):
-    # Elevation and Azimuth, in degree. An array of various [Az,El] is expected
-    # returns XYZ 
+    '''Convert Azimuth,Elevation to rectangular coordinates
+
+    IN:
+    - AzEl, an array of [Azimuth, Elevation] (in [deg])
+    - R: radius of the points
+
+    OUT:
+    - X,Y,Z rectangular coordinates, same unit as R
+    '''
     
     Azr = np.radians(AzEl[0])
     Elr = np.radians(AzEl[1])
@@ -157,25 +198,35 @@ def Pol2Rec(AzEl,R):
                     np.sin(Elr)
                     ]))
     return XYZ
+
 #---------------------------------------------------------------------------
 
-
 def Rec2Pol(xyz):
-    #in: xyz
-    #out: Az,El,R !! El is measured from equator
+    '''Rectangular to polar coordinate conversion
+    IN: on XYZ point as an array
+    OUT: 
+    - [Az,El], Azimuth and Elevation [deg]
+    - R, radius (same unit as XYZ)
+    '''
     R = np.linalg.norm(xyz, axis=0)
-    Elr = np.arcsin(xyz[2]/R)
+    Elr  = np.arcsin( xyz[2]/R ) #z
     Az = np.degrees(np.arctan2(xyz[1],xyz[0]))
     return np.array([Az, np.degrees(Elr)]), R
+
 #---------------------------------------------------------------------------
 
 def AltAzEqu(lat,XYZ):
-    # AltAz -> Eq
-    # OR Equ -> AltAz
+    '''Convert XYZ rectangular coordinates from AltAz to Equatorial 
+    (or vice-versa)
     
-    # latitude in deg
-    # XYZ in altAz system (or Eq)
-    # returns xyz in equatorial system (or AltAz)
+    IN: 
+    - lat: latitude of the observatory [deg]
+    - XYZ: array of rectangular coordinates in AltAz (or Eq)
+
+    OUT:
+    - XYZ: array of rectangular coordinates in Eq (or AltAz)
+    '''
+
     latr = np.radians(lat)
     sl = np.sin(latr)
     cl = np.cos(latr)
@@ -187,19 +238,23 @@ def AltAzEqu(lat,XYZ):
 #---------------------------------------------------------------------------
 
 def AltAz2Delta(lat,alt,AzEl):
-    #in:
-    # lat latitude [deg]
-    # alt altitude [km]
-    # Az, El: topocentric Az, El [deg]
-    #out:
-    # alpha, delta; longitude, latitude of satellite [deg]
-    # Delta: topocentric distance [km]
-    # costheta: cos of angle between line of sight and normal to shell at satellite.
+    '''Topocentric distance and normal to shell
+    in:
+    - lat latitude of the site [deg]
+    - alt altitude of the shell[km]
+    - AzEl: array of topocentric Az, El [deg]
+    
+    out:
+    - alpha: longitude of satellite [deg]
+    - delta: latitude of satellite [deg]
+    - Delta: topocentric distance [km]
+    - costheta: cos of angle between line of sight and normal to shell at satellite.
+    '''
 
     latr = np.radians(lat)
     sl = np.sin(latr)
     cl = np.cos(latr)
-    rs = re+alt
+    rs = constants.earthRadius+alt
     
     
     # from Az, El to xyz equatorial
@@ -208,8 +263,8 @@ def AltAz2Delta(lat,alt,AzEl):
 
     # Delta equation:  Da Delta2 + Db Delta + Dc = 0
     Da = 1.
-    Db = 2.*re * (xyz[0] * np.cos(latr) + xyz[2] * sl)
-    Dc = -alt*(alt + 2.* re)
+    Db = 2.*constants.earthRadius * (xyz[0] * np.cos(latr) + xyz[2] * sl)
+    Dc = -alt*(alt + 2.* constants.earthRadius)
 
     # determinant of the equation
     Ddeterm = Db**2 - 4.* Da*Dc
@@ -219,27 +274,33 @@ def AltAz2Delta(lat,alt,AzEl):
     #Delta2 = (-np.sqrt(Ddeterm) - Db)/2./Da
     
     # [7]: extract delta=latitude of satellite
-    sindelta = (Delta1* xyz[2] + re*sl )/ rs
+    sindelta = (Delta1* xyz[2] + constants.earthRadius*sl )/ rs
     deltar = (np.arcsin(sindelta))
     delta = np.degrees(deltar)
     cd = np.cos(deltar)
     
     # [5,6]: extract alpha = long
-    alphax = (Delta1*xyz[0] + re*cl)/cd/rs
+    alphax = (Delta1*xyz[0] + constants.earthRadius*cl)/cd/rs
     alphay = (Delta1*xyz[1]        )/cd/rs
     alpha = np.degrees(np.arctan2(alphay,alphax))
     
     # [10] costheta:
-    costheta = (rs**2 + Delta1**2 - re**2 )/(2.*Delta1*rs)
+    costheta = (rs**2 + Delta1**2 - constants.earthRadius**2 )/(2.*Delta1*rs)
     
     
     return alpha, delta, Delta1, costheta
 #----------------------------------------------------------------------
 
 def fillAzEl(step):
-    # fills in a hemisphere of Elv, Az,
-    # in: sep, distance beteen points in degrees
-    # out:  fillAz, fillEl
+    '''Grid a hemisphere with points in  Elv, Az, with step
+
+    IN: sep, distance beteen points in degrees
+    OUT: [ array of Az, array of El]
+
+    First step in elevation is at step/2, so [0, step]
+    All Elev rings have the same number of points (so the density 
+    at zenith is much higher)
+    '''
 
     El = np.arange(0.+step/2.,90.,step) # so that the 1st one is [0, step]
     Az = np.arange(0,361.,step)
@@ -249,23 +310,33 @@ def fillAzEl(step):
 #----------------------------------------------------------------------
 
 def radec2elev(ha,delta,lat):
-    #in 
-    #  ha, delta: hour angle/long, dec/lat [deg]
-    #  lat: latitude of observer [deg]
-    #out elevation [deg]
+    '''Elevation from HourAngle, Delta
+    
+    IN:
+    - ha, delta: hour angle (or long), dec (or lat) [deg]
+    - lat: latitude of observer [deg]
+    OUT
+    - elevation [deg]
+    '''
     har = np.radians(ha)
     deltar = np.radians(delta)
     latr = np.radians(lat)
     sine = np.sin(latr)*np.sin(deltar) + np.cos(latr)*np.cos(deltar)*np.cos(har)
     el = np.degrees(np.arcsin(sine))
+
     return el
 #----------------------------------------------------------------------
 
 def radec2azel(ha,delta,lat):
-    #in 
-    #  ha, delta: hour angle/long, dec/lat [deg]
-    #  lat: latitude of observer [deg]
-    #out az, elevation [deg]
+    '''Azimut,Elevation from HourAngle,Dec
+
+    IN 
+    - ha, delta: hour angle (or long), dec (or lat) [deg]
+    - lat: latitude of observer [deg]
+    OUT
+    - az, elevation [deg], same shape as HA,Delta
+    '''
+    
     har = np.radians(ha)
     deltar = np.radians(delta)
     latr = np.radians(lat)
@@ -297,7 +368,7 @@ def RaDecAlt2xyz(alpha,delta,alt):
     # input: alpha, delta, altitude of satellites
     # output: xyz equatorial of satellites
     
-    rs = re+alt
+    rs = constants.earthRadius+alt
     alphar = np.radians(alpha)
     deltar = np.radians(delta)
     xyz = np.array([rs* np.cos(alphar) * np.cos(deltar),
@@ -319,7 +390,7 @@ def solIllum(xyz,alphas, deltas):
     sas = np.sin(asr)
     cds = np.cos(dsr)
     sds = np.sin(dsr)
-    re2 = re*re
+    re2 = constants.earthRadius*constants.earthRadius
     
     #rotation of alphas along z 
     xyz1 = np.array([xyz[0]* cas + xyz[1]* sas ,
@@ -334,7 +405,7 @@ def solIllum(xyz,alphas, deltas):
     
     illum = np.zeros_like(xyzs[0]) # init to shadow
     illum[xyzs[0] >= 0] = 1.       # those in front of the Earth are illuminated
-    illum[(xyzs[1]**2 + xyzs[2]**2) >= re2 ] = 1.  # those further than Re are illum'd
+    illum[(xyzs[1]**2 + xyzs[2]**2) >= re2 ] = 1.  # those further than constants.earthRadius are illum'd
     
     return illum
 #----------------------------------------------------------------------
@@ -349,7 +420,7 @@ def satGeoVel(alpha,delta,inc,alt):
     #   for the two orbits with inc,
     #   alt that cross the alpha delta point.
     
-    rs = re+alt
+    rs = constants.earthRadius+alt
     
     alphar = np.radians(alpha)
     incr = np.radians(inc)
@@ -374,7 +445,7 @@ def satGeoVel(alpha,delta,inc,alt):
     S = Pol2Rec((alpha,delta),1.)
 
     # satellite velocities [km/s] = Vel * ( N x S ) 
-    VS = np.cross(N, S, axis=0) * np.sqrt(mu/rs )
+    VS = np.cross(N, S, axis=0) * np.sqrt(constants.gravityMu/rs )
 
     if 0:
         print("[satGeoVel] -----v")
@@ -405,7 +476,7 @@ def satTopoVel(VS,lat):
 
     
     # observatory velocity
-    VO = np.array([0.,we*re*np.cos(np.radians(lat)),0.])
+    VO = np.array([0.,constants.earthRotation*constants.earthRadius*np.cos(np.radians(lat)),0.])
 
     # observed velocity vector
     ObsVel = np.array([VS[0] - VO[0],VS[1] - VO[1],VS[2] - VO[2]])
@@ -421,20 +492,24 @@ def satTopoVel(VS,lat):
 #----------------------------------------------------------------------
 
 def AzEl2Vel(alpha, delta, Delta,lat,inc,alt):
-    #IN
-    #  alpha, delta: geocentric position of the satellite
-    #  Delta: distance Observatory-satellite
-    #  lat latitude of the observatory
-    #  inc, alt of the satellites
-    #OUT
-    #  AngularVel: apparent (from obs) average (for satellites moving
-    #  up and down) velocity of the satellites. [deg/s]
-    
+    '''Apparent average angular velocity
+
+    IN
+    - alpha, delta: geocentric position of the satellite [deg]
+    - Delta: distance Observatory-satellite [km]
+    - lat latitude of the observatory [deg]
+    - inc, alt of the satellites in this shell [deg],[km]
+
+    OUT
+    -  AngularVel: apparent (from obs) average (for satellites moving
+       up and down) velocity of the satellites. [deg/s]
+    '''
+
     # geocentric coordinates of the sat
-    CS = Pol2Rec((alpha,delta), re+alt)
+    CS = Pol2Rec((alpha,delta), constants.earthRadius+alt) 
     
     # geocentric coordinates of the observatory
-    wCO = Pol2Rec((0.,lat),re)    
+    wCO = Pol2Rec((0.,lat),constants.earthRadius)    
     CO = np.array([[wCO[0]], [wCO[1]], [wCO[2]]])
     
     # topocentric coords of sat:
@@ -461,7 +536,7 @@ def AzEl2Vel(alpha, delta, Delta,lat,inc,alt):
     ObsVelPerpan = np.array([ np.linalg.norm(wObsVelPerpan[0],axis=0), 
                              np.linalg.norm(wObsVelPerpan[1],axis=0) ])
 
-    #apparent angular velocity of satellite (natively: [deg/sec]):
+    #apparent angular velocity of satellite  [deg/sec]:
     AngularVel = np.average(np.degrees(np.arctan(ObsVelPerpan/Delta)), axis=0)
 
     if 0 :
@@ -484,6 +559,25 @@ def AzEl2Vel(alpha, delta, Delta,lat,inc,alt):
 
 def modelOneConstMag(AzEl,lat, alphas,deltas,
                      inc,alt,num ):
+    '''Model one shell over a set of Az,El pointings
+    IN
+    - AzEl: array [ array of Azimuths, array of Elevations]  [deg]
+    - lat: latitude of the observer [deg]
+    - alphas, deltas: HourAngle and Dec. of the Sun [deg]
+    - inc, alt, num: parameters of the satellite constellation shell:
+      - inc: inclination [deg]
+      - alt: altitude [km]
+      - num: number of satellites in the shell
+    OUT
+    - satellite number density (same shape as AzEl)
+    - satellite apparent angular velocity (same shape as AzEl)
+    - magnitude of the satellite
+            np.reshape(wdensityi,  (AzEl.shape[1],AzEl.shape[2]) ) ,\
+        np.reshape(wAngularVel, (AzEl.shape[1],AzEl.shape[2]) ),\
+        mag
+
+    '''
+
 
     # sun az, el
     azs,els = radec2azel(alphas,deltas, lat)
@@ -517,36 +611,31 @@ def modelOneConstMag(AzEl,lat, alphas,deltas,
 
     # density at this place
     densitys = satNumDensity(deltaBot, deltaTop,inc,num) \
-                   * (Delta/(re+alt))**2 / costheta 
+                   * (Delta/(constants.earthRadius+alt))**2 / costheta 
 
     # Illuminated satellites
     illum = solIllum(xyz,alphas, deltas)
-    
     wdensityi = densitys * illum
 
     #  MAGNITUDE of the satellites:
 
-    #   ZTF brightnening
-#    DeltaAzs = np.cos(np.radians( AzEl[0] - azs ))
-#    Dmag = 1-np.degrees(np.arccos(DeltaAzs))/magAzCut 
-#    Dmag[Dmag < 0] = 0.
-#    #   experimental elevation function: peaks when angle(Sat,sun)=45deg
-#    Del = AzEl[1] - els
-#    Del[Del>90] = 0.
-#    Del = 1-((Del-magAngPeak)/magAngPeak)**2
+    wmag =  constants.mag550 + 5.*np.log10(Delta/550.)        # distances
+    wmag += constants.extinction*(Delta/alt -1.)    # extinction
 
-
-    mag = np.reshape(
-        mag550
-        + 5.*np.log10(Delta/550.) # distances
-        + extn*(Delta/alt -1.)    # extinction
-        , (AzEl.shape[1],AzEl.shape[2]))
-    # + Dmag*Del*magAzBright     # ZTF brightening
+    ## ZTF brightnening
+    # deltaAzs = np.cos(np.radians( AzEl[0] - azs ))
+    # mag = 1-np.degrees(np.arccos(DeltaAzs))/constants.ZTFmagAzCut 
+    # mag[Dmag < 0] = 0.
+    ##    experimental elevation function: peaks when angle(Sat,sun)=45deg
+    # el = AzEl[1] - els
+    # el[Del>90] = 0.
+    # Del = 1-((Del-constants.ZTFmagAngPeak)/constants.ZTFmagAngPeak)**2
+    # wmag += Dmag*Del*constants.ZTFmagAzBright     # ZTF brightening
     
     return \
-        np.reshape(wdensityi,  (AzEl.shape[1],AzEl.shape[2]) ) ,\
+        np.reshape(wdensityi,   (AzEl.shape[1],AzEl.shape[2]) ) ,\
         np.reshape(wAngularVel, (AzEl.shape[1],AzEl.shape[2]) ),\
-        mag
+        np.reshape(wmag,        (AzEl.shape[1],AzEl.shape[2]) )
     
 
 

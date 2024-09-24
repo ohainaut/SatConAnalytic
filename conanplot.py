@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-# CatAn
-# Constellation Analytic simulations
+# SatConAnalytic - Satellite Constellation Analytic simulations
 #
-# plots functions
+# ploting functions
 #==============================================================================
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker
-
 import conan as ca
+import telescopes
 
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 colors = ["black", "lawngreen", "yellow", "orange", "red", "darkred"]
@@ -27,8 +26,15 @@ csunmap = LinearSegmentedColormap.from_list("mycmap", colors)
 
 
 #------------------------------------------------------------------------------
+def findTelescope(telinslabel):
+    allTel = telescopes.readTelescopes()
+    try:
+        return allTel.byCode[telinslabel]
+    except KeyError:
+        raise KeyError(f'{telinslabel} not in {allTel.list}')
 
-def findPreset(telinslabel):
+
+def findPresetOLD(telinslabel):
     # load parameters for a preset telinslabel telescope/instrument
     
     
@@ -459,56 +465,6 @@ def findPreset(telinslabel):
 
 
 
-#------------------------------------------------------------------------------
-
-def findConstellations(constellationsll):
-    # Assemble a set of constellations for preset constellationll
-
-    from constellations import SL1, SL2, hSL1, hSL2, OW2, OW2r, GW, AK, yesturday, constoday, SLtoday, csl1a1, ESP
-
-    constDir = {
-        "YESTURDAY": {  "constellations" : yesturday,
-                        "constellationsl" : "Pre-const LEOs" },
-        "TODAY": {      "constellations" : np.concatenate((yesturday,constoday)),
-                        "constellationsl" : "LEOs today" },
-        "SLtoday": {    "constellations" : SLtoday,
-                        "constellationsl" : "SL today"},
-        "SL2OW2": {     "constellations" : np.concatenate((SL2,OW2)),
-                        "constellationsl" : "SL2 & OW2"},
-        "csl1a1": {     "constellations" : [csl1a1],
-                        "constellationsl" : "SL1 A1"},
-        "SLOW2": {      "constellations" : np.concatenate((SL1, SL2, OW2)),
-                        "constellationsl" : "SL1+2 & OW2"},
-        "OW2r": {       "constellations" : OW2r,
-                        "constellationsl" : "OW2 reduced"},
-        "OW2": {        "constellations" : OW2,
-                        "constellationsl" : "OW2 original"},
-        "SL1": {        "constellations" : (SL1),
-                        "constellationsl" : "SL1"},
-        "SL": {         "constellations" : np.concatenate((SL1, SL2)),
-                        "constellationsl" : "SL1+2"},
-        "SLhigh": {     "constellations" : np.concatenate((hSL1, hSL2)),
-                        "constellationsl" : "SL1+2 HIGH"},
-        "SLOWGW": {     "constellations" : np.concatenate((SL1, SL2, OW2r, GW)),
-                        "constellationsl" : "SL1+2, OW2r, GW1+2"},
-        "SLOWGWAK": {   "constellations" : np.concatenate((SL1, SL2, OW2r, GW, AK)),
-                        "constellationsl" : "SL1+2, OW2r, GW1+2, AK"},
-        "SLOWr": {      "constellations" : np.concatenate((SL1, SL2, OW2r)),
-                        "constellationsl" :  "SL1+2 & OW2 red."},
-        "ALL": {        "constellations" : np.concatenate((SL1, SL2, OW2r, GW, AK, ESP)),
-                        "constellationsl" : "SL1+2, OW2r, GW1+2, AK, E-Sp"},
-        "ESPACE": {     "constellations" : (ESP),
-                        "constellationsl" :  "E-Space"}
-        }
-
-    if constellationsll in constDir:
-        return constDir[constellationsll]['constellationsl'], constDir[constellationsll]['constellations']
-    else:
-        print('List of available constellations:')
-        for c in constDir:
-            print(c ,":  ", constDir[c]['constellationsl'])
-        exit(1)
-    
 
 #------------------------------------------------------------------------------
 
