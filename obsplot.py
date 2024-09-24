@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
-# ConAn
-# Constellation Analytic simulations
-#
-# Generate main plot: density of satellite over the map of the sky
+'''SatConAnalytic - Satellite Constellation Analytic simulations
 
-# obsplot.py
-#   -h for options
+Plot satellite density over the map of the sky.
+
+Alternatively, the plot can show
+- velocity density of the satellites
+- the number of satellites / detectable satellites / saturating satellites / 
+  non-saturating satellites in the field of view of an instrument
+- the effect of the satellites on the observations (%loss)
+- the sky brighness increase caused by satellites.
+
+obsplot.py -h for usage
+'''
 
 import matplotlib
 matplotlib.use('Agg')  # to avoid Xdisplay issues in remote
 import matplotlib.pyplot as plt
 import numpy as np
-
 import argparse
 import sys
 import os
-sys.path.append(os.path.dirname(__file__)+"/../")
+#sys.path.append(os.path.dirname(__file__)+"/../")
 
 
 from matplotlib import ticker
@@ -29,8 +34,8 @@ from constants import mag550
 
 #----- config
 step = 0.75 #deg >~1. Smaller values take forever
-outpath = "/home/ohainaut/public_html/outsideWorld/"
-#outpath = "./"
+#outpath = "/home/ohainaut/public_html/outsideWorld/"
+outpath = "./"
 
 
 #------Arguments
@@ -47,27 +52,27 @@ parser.add_argument('-e','--elevSun', default=-24.,
                     help="Sun: Elevation of the Sun BELOW the horizon. Should probably be >0 in most cases [deg]")
 parser.add_argument('-C','--constellations', default='SLOWGWAK',
                     help="ID of the constellation group; list for a list")
-parser.add_argument('-l','--latitude', default=-24.6,
+parser.add_argument('-l','--lat', default=-24.6,
                     help="Observatory: Latitude of the observatory [deg]")
-parser.add_argument('-r','--resolution', default=1./3600., 
+parser.add_argument('-r','--resol', 
                     help="Observatory: Resolution of the instrument [deg]")
-parser.add_argument('-t','--expTime', default=10.,
+parser.add_argument('-t','--expt', 
                     help="Observatory: Exposure time [sec]")
-parser.add_argument('-f','--FoV', default=1.,
+parser.add_argument('-f','--fovl',
                     help="Observatory: Field of view of the instrument. Length or diametre [arcsec]")
-parser.add_argument('-w','--FoVw', 
+parser.add_argument('-w','--fovw', 
                     help="Observatory: Field of view of the instrument. Width. Equal to Length if omitted [arcsec]")
-parser.add_argument('-m','--magLim', default=99.,
+parser.add_argument('-m','--maglim', 
                     help="Observatory: Detection limit magnitude of the instrument [5sigma Mag during expTime]")
-parser.add_argument('--magBloom', default=-99.,
+parser.add_argument('--magbloom',
                     help="Observatory: Magnitude over which the instrument saturates [Mag for expTime]. Default: -99 (no blooming)")
-parser.add_argument('-k','--trailFill', default=1.,
+parser.add_argument('-k','--trailf', 
                     help="Observatory: Trail filling fraction (width of the trail as fraction of FoV)")
-parser.add_argument('-s','--telescope', default=" ",
+parser.add_argument('-s','--telescope', 
                     help="Observatory: Name of the telescope")
-parser.add_argument('-i','--instrument', default=" ",
+parser.add_argument('-i','--instrument', 
                     help="Observatory: Name of the instrument")
-parser.add_argument('-T','--system', 
+parser.add_argument('-T','--code', 
                     help='''Observatory: Predefined telescope/instrument with
                          extptime, FoVl, FoVw, maglim, magbloom, trailf,  
                          telescope, instrument, resolution, latitude. 
@@ -77,7 +82,7 @@ parser.add_argument('-T','--system',
                          skyMag for sky surface brightness [mag];
                          skyFrac for sky surface brightness as a fraction.
 ''')
-parser.add_argument('-M','--magcut', default="ALL",
+parser.add_argument('-M','--mode', default="OBS",
                     help="Plot: ALL (Default), OBS, BRIGHT, FAINT, or EFFECT")
 parser.add_argument('--noplot', action='store_false',
                     help="Plot: Don't generate the plot (mostly debug)")
@@ -91,81 +96,68 @@ parser.add_argument('--nolabel', action='store_false',
                     help="Plot: Don't label the plot")
 parser.add_argument('--pdf', action='store_true',
                     help="Plot: output file in pdf (default is png)")
-args = parser.parse_args()
+myargs = parser.parse_args()
 
 
+if myargs.code is None: 
+    myargs.code = 'DEFAULT'
+myTel = cp.findTelescope(myargs.code)
 
+# overload specific tel/ins setup parameters:
+for what in [
+    'expt',
+    'fovl',
+    'magbloom',
+    'maglim',
+    'resol',
+    'trailf',
+    'lat',
+    'telescope',
+    'instrument'
+]:
+    if myargs.__dict__[what] is not None:
+        myTel.__dict__[what] = float(myargs.__dict__[what])
 
-if args.system is not None:  #-----presets
-    args.telinslabel = args.system
-    args.telescope, args.lat, args.instrument, args.expt, args.fovl, args.fovw, args.resol, args.maglim, args.magbloom, args.trailf = cp.findPreset(args.telinslabel)
+if myTel.fovw is not None:
+    myTel.fovw = myTel.fovw
 else:
-    args.telinslabel = " "
+    myTel.fovw = myTel.fovw *1.
 
-
-    # observatory and instrument
-    args.lat   = float(args.latitude)
-    args.resol = float(args.resolution)
-
-    args.expt = float(args.expTime)
-    args.fovl = float(args.FoV)
-
-    if args.FoVw is None:
-        args.fovw = args.fovl*1.
-    else:
-        args.fovw = float(args.FoVw)
-
-    args.maglim = float(args.magLim)
-    args.magbloom = float(args.magBloom)
-    args.trailf = float(args.trailFill)
+print('TELESCOPE/INSTRUMENT SETUP')
+print(myTel)
 
 
 # sun
-args.deltas = float(args.deltaSun)
-args.elevs = float(args.elevSun)   
-if args.alphaSun is None:
-    args.alphas = ca.elev2ra(args.elevs,args.deltas,args.lat) # get sun hourangle for twilight
+
+sunDelta = float(myargs.deltaSun)
+sunElev  = float(myargs.elevSun)   
+if myargs.alphaSun is None:
+    sunAlpha = ca.elev2ra(sunElev,sunDelta,myTel.lat) # get sun hourangle for twilight
 else:
-    args.alphas = float(args.alphaSun)
-    args.elevs = ca.radec2elev(args.alphas,args.deltas,args.lat)
+    sunAlpha = float(myargs.alphaSun)
+    sunElev = ca.radec2elev(sunAlpha,sunDelta,myTel.lat)
 
 
 
 # flags
-args.plotflag     = args.noplot
-args.shadeflag    = args.noshade
-args.scalebarflag = args.noscalebar
-args.labelplotflag = args.nolabel
-args.almucantar   = args.noalmuc
-if args.pdf :
-    args.outputformat = ".pdf"
+myargs.plotflag      = myargs.noplot
+myargs.shadeflag     = myargs.noshade
+myargs.scalebarflag  = myargs.noscalebar
+myargs.labelplotflag = myargs.nolabel
+myargs.almucantar    = myargs.noalmuc
+if myargs.pdf :
+    myargs.outputformat = ".pdf"
 else:
-    args.outputformat = ".png"
+    myargs.outputformat = ".png"
     
 
 
 
 # expand the constellation id into a list of real constellations
-constellationsl, constellations = cp.findConstellations(args.constellations)
-consLab, consNum, consPla, consNPl, consInc, consAlt = ca.loadConstellations(constellations)
-nCons = len(consLab)
-
-
-
-if 1:
-    print("Telescope:          ", args.telinslabel)
-    print("Tel. latitude:      ", args.lat)
-    print("Tel. FoV:           ", args.fovl, args.fovw, "deg")
-    print("Resolution (pixel):  {:.2g}arcsec".format(args.resol*3600.))
-    print("Trail fill fraction: {:.3g}".format(args.trailf))
-    print("Sun coord.: HA: {:.1f}, Dec: {:.1f}, Elev: {:.1f} [deg]".format(args.alphas, args.deltas, args.elevs))
-    print("Constellations:     ",constellationsl)
-    print("Number of sub.constellations:",nCons)
-    print("Total num of sat:   ", sum(consNum))
-    #print('Number of sat. per const.:',consNum)
-    print('Magnitude cut:      ',args.magcut)
-    print('plotflag:           ',args.plotflag)
-    print('almucantar:         ',args.almucantar)
+CONSTELLATIONS = ca.findConstellations(myargs.constellations)
+print('CONSTELLATIONS:')
+print( CONSTELLATIONS.ToC )
+print()
 
 
 
@@ -189,13 +181,16 @@ magmin = 99.
 mageffmax = -99
 mageffmin = 99.
 
-icons = 0
 
-while icons < len(consInc):
-    # constellation
-    densSi, veli, magi =  ca.modelOneConstMag(AzEl,args.lat, args.alphas,args.deltas,
-                            consInc[icons], consAlt[icons], consNum[icons])
+for myShell in CONSTELLATIONS.shells:                 
+    # model the shell
+    densSi, veli, magi =  ca.modelOneConstMag(AzEl,myTel.lat, sunAlpha,sunDelta,
+                            myShell.inc,
+                            myShell.alt, 
+                            myShell.totSat
+                            )
 
+    # extreme magnitudes
     magmax = max(magmax,np.amax(magi))
     magmin = min(magmin,np.amin(magi))
     
@@ -203,20 +198,20 @@ while icons < len(consInc):
     densSatAll += densSi
     densVelAll += densSi * veli
 
-    # effective magnitude
-    mageffi = magi  - 2.5*np.log10(args.resol/veli/args.expt)
+    # effective magnitude and extremes
+    mageffi = magi  - 2.5*np.log10(myTel.resol/veli/myTel.expt)
     mageffmax = max(mageffmax,np.amax(mageffi))
     mageffmin = min(mageffmin,np.amin(mageffi))
 
     # only observable ones
     densSobsi = np.copy(densSi)
-    densSobsi[ mageffi > args.maglim] = 0.
+    densSobsi[ mageffi > myTel.maglim] = 0.
     densSatObs += densSobsi
     densVelObs += densSobsi * veli
     
     # only super bright bloomers
     densSbloomi = np.copy(densSi)
-    densSbloomi[ mageffi > args.magbloom ] = 0.
+    densSbloomi[ mageffi > myTel.magbloom ] = 0.
     densSatBloom += densSbloomi
     densVelBloom += densSbloomi * veli
 
@@ -224,27 +219,27 @@ while icons < len(consInc):
     fluxi = 10.**(-0.4*magi) /3600.**2 * densSi
     fluxSatTotal += fluxi
 
-    icons += 1
     
 # here, we have the following arrays defined:
 #   densSatAll: dens in Nsat/sq.deg
 #   densVelAll: density if trails in Ntrail/deg/sec
-#   densSatObs: same, only for sat with mag < args.maglim
+#   densSatObs: same, only for sat with mag < myTel.maglim
 #   densVelObs:
-#   densSatBloom: same, only for sat with mag < args.magbloom
+#   densSatBloom: same, only for sat with mag < myTel.magbloom
 #   densVelBloom
 #   fluxSatTotal: flux density for mag/sq.arcsec, for m550 at 550km
 
-if args.plotflag:
-    print( "Satellite magnitudes in [{:.2f},{:.2f}]".format(magmax,magmin))
-    print( "Satellite eff. mag.  in [{:.2f},{:.2f}]".format(mageffmax,mageffmin))
-    print(f'\nFolliwing output for zenith: (AzAlt={AzEl[:,-1,-1]})')
+if myargs.plotflag:
+    print( f'Satellite magnitudes in [{magmax:.2f},{magmin:.2f}]')
+    print( f'Satellite eff. mag.  in [{mageffmax:.2f},{mageffmin:.2f}]')
+    print( f'\nFolliwing output for zenith: (AzAlt={AzEl[:,-1,-1]})')
     print('- Sat density [n/sq.dg]', round( densSatAll[-1,-1],  4))
     print('- Sat velocity (for last constellation) [deg/s]', round(veli[-1,-1],4))
     print(f'- Diffuse mag [mag/sq/arcsec]: {-2.5*np.log10(fluxSatTotal[-1,-1]):.2f}' )
 
 # output file
-outfileroot = "{}_{}_{}_{:02d}_{:02d}".format(args.telinslabel,args.constellations,args.magcut,int(args.lat),int(-args.elevs))
+outfileroot  = f'{myargs.code}_{myargs.constellations}_'
+outfileroot += f'{myargs.mode}_{int(myTel.lat):02d}_{int(-sunElev):02d}'
 
 # sat count for almucantars
 elLim = [60.,30.,20., 10.,0.]
@@ -252,8 +247,8 @@ elCount = ca.integrateSat(elLim,AzEl,densSatAll)
 
 outfile = open(outpath+outfileroot+'.txt','w+')  # store the hist.
 outstring =  ('{:6.3f} {:5.1f} '+' {:4.0f}'*16).format(
-    args.alphas,
-    args.elevs,
+    sunAlpha,
+    sunElev,
     0.,0.,0.,0.,
     elCount[1],    
     elCount[2],    
@@ -266,28 +261,28 @@ outstring =  ('{:6.3f} {:5.1f} '+' {:4.0f}'*16).format(
 
 #==============================================================================
 
-if args.magcut == 'BRIGHT':
+if myargs.mode == 'BRIGHT':
     ds = densSatBloom
     dv = densVelBloom
     labelmag = True              
 
-elif args.magcut == 'OBS':
+elif myargs.mode == 'OBS':
     ds = densSatObs
     dv = densVelObs
     labelmag = True              
 
-elif args.magcut == 'FAINT':
+elif myargs.mode == 'FAINT':
     ds = densSatAll - densSatBloom
     dv = densVelAll - densVelBloom    
     labelmag = True              
 
-elif args.magcut == 'ALL':
+elif myargs.mode == 'ALL':
     ds = densSatAll
     dv = densVelAll
 
-elif args.magcut == 'EFFECT':
-    ds = args.trailf * densSatObs + (1.-args.trailf)* densSatBloom
-    dv = args.trailf * densVelObs + (1.-args.trailf)* densVelBloom
+elif myargs.mode == 'EFFECT':
+    ds = myTel.trailf * densSatObs + (1.-myTel.trailf)* densSatBloom
+    dv = myTel.trailf * densVelObs + (1.-myTel.trailf)* densVelBloom
     labelmag = True
     
 else:
@@ -305,18 +300,18 @@ lvmax = np.log10(30)##< MAXIMUM STANDARD
 #lvmax = np.log10(5000)#
 
 
-print ("telinslabel",args.telinslabel)
-if args.telinslabel == "TrailDens":
+print ("telinslabel",myargs.code)
+if myargs.code == "TrailDens":
     ldens = np.log10( dv )
     densl = "Number of trails./deg/sec."
     #print("Tdensity")
 
-elif args.telinslabel == "SatDens":
+elif myargs.code == "SatDens":
     ldens = np.log10( ds )
     densl = "Number of sat./sq.deg."
     #print("Sdensity")
 
-elif args.telinslabel == "skyMag":
+elif myargs.code == "skyMag":
     ldens =  2.5* np.log10( fluxSatTotal )
     skybrightmag = False
     lvmin = -30.0
@@ -324,7 +319,7 @@ elif args.telinslabel == "skyMag":
     lvmax = -24.25  ## np.amax(ldens) + 0.5
     labelmag = True
 
-elif args.telinslabel == "skyFrac":  # fraction of the sky surfbrightness
+elif myargs.code == "skyFrac":  # fraction of the sky surfbrightness
     skymag0 = 21.78 + 5 # dark sky, mag/arcsec2, +5 for %
     skymag = skymag0 
     #skymag = 21.00 +5  #  mag/arcsec2    -15deg tw
@@ -339,11 +334,11 @@ elif args.telinslabel == "skyFrac":  # fraction of the sky surfbrightness
 
 else: # other specific (including EFFECT)
     #print("density: other, specific instrument")
-    dens    =  ds* args.fovl*args.fovw + dv * args.fovl * args.expt
+    dens    =  ds* myTel.fovl*myTel.fovw + dv * myTel.fovl * myTel.expt
              # trailf already accounted for in ds and dv
      
     ldens   = np.nan_to_num(np.log10(dens ), neginf=np.log10( np.min( dens[ dens > 0] )))
-    densobs = densSatObs * args.fovl*args.fovw +  densVelObs* args.fovl *args.expt
+    densobs = densSatObs * myTel.fovl*myTel.fovw +  densVelObs* myTel.fovl *myTel.expt
                      # number of observable trails
 
     
@@ -368,7 +363,7 @@ else: # other specific (including EFFECT)
     outstring += " {} {}".format(EffTot,TrailTot)
 
     
-    if args.magcut == 'EFFECT':
+    if myargs.mode == 'EFFECT':
         #print("Effect")
         densl = "Fraction lost"
         cmap = gyrd    
@@ -381,10 +376,10 @@ else: # other specific (including EFFECT)
 
 #-- plot
 
-if not args.plotflag:
-    args.labelplotflag  = False
-    args.scalebarflag = False
-    args.shadeflag = False
+if not myargs.plotflag:
+    myargs.labelplotflag  = False
+    myargs.scalebarflag = False
+    myargs.shadeflag = False
 else:
     fig = plt.figure(figsize=(8,8))
     ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
@@ -414,9 +409,9 @@ else:
 
 #----------------------------------------------------------------------
 #Scalebar
-if args.scalebarflag:
+if myargs.scalebarflag:
     cbar = fig.colorbar(cfd)
-    if args.telinslabel == "skyMag":
+    if myargs.code == "skyMag":
         # (the plot contains -mag) 
         barmag = np.arange(-30,-23,.5)
         if skybrightmag:
@@ -439,7 +434,7 @@ if args.scalebarflag:
                 densl = "Surface brightness [ % of sky]"
 
             
-    elif args.telinslabel == "skyFrac":
+    elif myargs.code == "skyFrac":
         barmag = np.arange(-30,-25,.5) + skymag0 # skymag comes with +5mag for %
         barlum = 10**(0.4*barmag) 
         cbar.set_ticks(barmag)
@@ -463,7 +458,7 @@ if args.scalebarflag:
 #----------------------------------------------------------------------
 # airmass shade
 
-if args.shadeflag:
+if myargs.shadeflag:
     waz = np.arange(0.,2.*np.pi,.01)
     wr1 = 0.*waz +90
     whss = [['xx','x'],['++','+']]
@@ -488,7 +483,7 @@ if args.shadeflag:
 
 #------------------------------------------------------------------------------
 # RA Dec lines
-cp.drawHADec(args.lat)
+cp.drawHADec(myTel.lat)
 
 
 #----------------------------------------------------------
@@ -496,10 +491,10 @@ cp.drawHADec(args.lat)
 
 
 
-if args.labelplotflag:
+if myargs.labelplotflag:
 
     #Sun
-    azs,els = ca.radec2azel(args.alphas, args.deltas, args.lat)
+    azs,els = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
     plt.text(np.radians(azs), 93.,"$\odot$", va="center", ha='center')
     
 
@@ -508,33 +503,33 @@ if args.labelplotflag:
     y = 1.2
     dy = 0.08
     
-    cp.azlab(ax,x,y,'Observatory: {} Lat.: {:.1f}$^o$'.format(args.telescope, args.lat))
+    cp.azlab(ax,x,y,'Observatory: {} Lat.: {:.1f}$^o$'.format(myTel.telescope, myTel.lat))
     y -= dy
     
     
-    if args.telinslabel != "SatDens" and args.telinslabel != "TrailDens" and args.telinslabel != "skyMag":
-        cp.azlab(ax,x,y,'Instrument: {}'.format(args.instrument))
+    if myargs.code != "SatDens" and myargs.code != "TrailDens" and myargs.code != "skyMag":
+        cp.azlab(ax,x,y,'Instrument: {}'.format(myTel.instrument))
         y -= dy
 
-        if args.fovl < 1./60.:
-            fovll = '{:.2f}\"'.format(args.fovl*3600.)
-        elif args.fovl < 1./6.:
-            fovll = '{:.2f}\''.format(args.fovl*60.)
+        if myTel.fovl < 1./60.:
+            fovll = '{:.2f}\"'.format(myTel.fovl*3600.)
+        elif myTel.fovl < 1./6.:
+            fovll = '{:.2f}\''.format(myTel.fovl*60.)
         else:
-            fovll = '{:.2f}$^o$'.format(args.fovl)
+            fovll = '{:.2f}$^o$'.format(myTel.fovl)
 
-        if args.fovw < 1./60.:
-            fovlw = '{:.2f}\"'.format(args.fovw*3600.)
-        elif args.fovw < 1./6.:
-            fovlw = '{:.2f}\''.format(args.fovw*60.)
+        if myTel.fovw < 1./60.:
+            fovlw = '{:.2f}\"'.format(myTel.fovw*3600.)
+        elif myTel.fovw < 1./6.:
+            fovlw = '{:.2f}\''.format(myTel.fovw*60.)
         else:
-            fovlw = '{:.2f}$^o$'.format(args.fovw)
+            fovlw = '{:.2f}$^o$'.format(myTel.fovw)
 
         cp.azlab(ax,x,y,'Fov: '+fovll+'x'+fovlw)
         y -= dy
 
 
-        cp.azlab(ax,x,y,'Exp.t: {:.0f}s'.format(args.expt))
+        cp.azlab(ax,x,y,'Exp.t: {:.0f}s'.format(myTel.expt))
         y -= dy
         
 
@@ -545,13 +540,13 @@ if args.labelplotflag:
     cp.azlab(ax,x,y,'$\odot$ Sun:',14)
 
     y -= dy
-    loct = (args.alphas/15.+12.)%24
+    loct = (sunAlpha/15.+12.)%24
     
     loch = int(loct)
     locm = int( (loct-loch)*60.)
     cp.azlab(ax,x,y,f'Loc.time: {loch:02d}:{locm:02d}')
     y -= dy
-    cp.azlab(ax,x,y,f'$\delta: {args.deltas:.2f}^o$, Elev: {args.elevs:.2f}$^o$')
+    cp.azlab(ax,x,y,f'$\delta: {sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
     y -= dy
 
 
@@ -562,10 +557,10 @@ if args.labelplotflag:
     y=1.2
     cp.azlab(ax,x,y,'Constellation:',14)
     y -= dy
-    cp.azlab(ax,x,y,constellationsl)
+    cp.azlab(ax,x,y,CONSTELLATIONS.name)
     
     y -= dy
-    cp.azlab(ax,x,y,"Total {:.0f} sat.".format(sum(consNum)))
+    cp.azlab(ax,x,y, f'Total {CONSTELLATIONS.totSat:.0f} sat.')
 
     #bottom right
     x = 1.
@@ -576,7 +571,7 @@ if args.labelplotflag:
         cp.azlab(ax,x,y,lab)
         y -= dy
 
-    if mageffmin < -1000. or args.telinslabel == "skyMag":
+    if mageffmin < -1000. or myargs.code == "skyMag":
         lab = "  V$_{sat}$"+" in [{:.1f}, {:.1f}]".format(magmax,magmin)
     else:
         lab = "  V$_{sat}$"+" in [{:.1f}, {:.1f}]".format(magmax,magmin)+\
@@ -586,24 +581,24 @@ if args.labelplotflag:
     cp.azlab(ax,x,y,lab)
     y -= dy
 
-    if args.magcut == "BRIGHT":
-        cp.azlab(ax,x,y,"Selection: mag < {:.0f}".format(args.magbloom))
-    elif args.magcut == "OBS":
-        wlab = "Selection: mag$_{eff}$ < "+"{:.1f}".format(args.maglim)
+    if myargs.mode == "BRIGHT":
+        cp.azlab(ax,x,y,"Selection: mag < {:.0f}".format(myTel.magbloom))
+    elif myargs.mode == "OBS":
+        wlab = "Selection: mag$_{eff}$ < "+"{:.1f}".format(myTel.maglim)
         cp.azlab(ax,x,y,wlab)
-    elif args.magcut == "FAINT":
-        cp.azlab(ax,x,y,"Selection: mag > {:.0f}".format(args.magbloom))
-    elif args.magcut == "EFFECT":
+    elif myargs.mode == "FAINT":
+        cp.azlab(ax,x,y,"Selection: mag > {:.0f}".format(myTel.magbloom))
+    elif myargs.mode == "EFFECT":
         cp.azlab(ax,x,y,"Selection: all satellites, scaled for effect")
-        wlab = "Detected: V$_{eff}$ < "+"{:.1f} ".format(args.maglim)
-        wlab += "   Bleeding: V$_{eff}$ < "+"{:.1f}".format(args.magbloom)
+        wlab = "Detected: V$_{eff}$ < "+"{:.1f} ".format(myTel.maglim)
+        wlab += "   Bleeding: V$_{eff}$ < "+"{:.1f}".format(myTel.magbloom)
         y -= dy
         cp.azlab(ax,x,y,wlab)
 
 
     
 
-if args.almucantar and args.plotflag:
+if myargs.almucantar and myargs.plotflag:
     # sat count on almucantars
     for we, wi in zip(elLim, elCount):
         cp.azlab(ax,-0,(90.-we-5)/90.,'{:.0f} sat.>{:.0f}$^o$:'.format(wi,we),9,0.5*(1.-we/100.))
@@ -618,10 +613,10 @@ outfile.close()
 
 
 # save plot
-if args.plotflag:
+if myargs.plotflag:
     fig.tight_layout()
     plt.savefig(outpath+'w.png')
-    filename = outpath+outfileroot+args.outputformat
+    filename = outpath+outfileroot+myargs.outputformat
     print(filename)
 
     plt.savefig(filename)

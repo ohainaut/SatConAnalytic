@@ -1,0 +1,810 @@
+[
+    {
+        "name" : "Starlink Gen-1 (old)",
+        "code" : "SL1old",
+        "comment" : "Starlink-1 former architecture, deprecated",
+        "shells" : {
+            "csl1a1" : {
+                "label" :"SL1 B0",
+                "totSat": 1584,
+                "nPlane": 72,
+                "nSat"  : 32,
+                "inc"   : 53.0,
+                "alt"   : 550.0},
+            "csl1a3" : {
+                "label" :"SL1 B3",
+                "totSat": 75 ,
+                "nPlane": 10,
+                "nSat"  : 38,
+                "inc"   : 81.0,
+                "alt"   : 560.0},
+            "csl1a4" : {
+                "label" :"SL1 B4",
+                "totSat": 450,
+                "nPlane": 12,
+                "nSat"  : 38,
+                "inc"   : 70.0,
+                "alt"   : 570.0},
+            "csl1a2" : {
+                "label" :"SL1 B2",
+                "totSat": 400 ,
+                "nPlane": 16,
+                "nSat"  : 25,
+                "inc"   : 74.0,
+                "alt"   : 545.0},
+            "csl1a5" : {
+                "label" :"SL1 B1",
+                "totSat": 600,
+                "nPlane": 32,
+                "nSat"  : 50,
+                "inc"   : 54.0,
+                "alt"   : 540.0},
+            "csl1b1" : {
+                "label" :"SL1 A1",
+                "totSat": 2493,
+                "nPlane": 42,
+                "nSat"  : 60,
+                "inc"   : 42.0,
+                "alt"   : 336.0},
+            "csl1b2" : {
+                "label" :"SL1 A2",
+                "totSat": 2478,
+                "nPlane": 42,
+                "nSat"  : 60,
+                "inc"   : 48.0,
+                "alt"   : 341.0},
+            "csl1b3" : {
+                "label" :"SL1 A3",
+                "totSat": 2547,
+                "nPlane": 42,
+                "nSat"  : 60,
+                "inc"   : 53.0,
+                "alt"   : 346.0}
+        }
+    },
+    {
+        "name" : "Starlink Gen-1 SAT-MOD-20200417-00037",
+        "comment" : "updated from SAT-MOD-20200417-00037 - this overwrites prev version (12ksat)",
+        "code" : "SL1",
+        "shells" : {
+            "csl1a1" : {
+                "label": "SL1.A1", 
+                "totSat" : 1584, 
+                "nPlane" : 72, 
+                "nSat"   : 22, 
+                "inc"    : 53   ,
+                "alt"    : 550.0},
+            "csl1a2" : {
+                "label": "SL1.A2",
+                "totSat" : 1584,
+                "nPlane" : 72,
+                "nSat"   : 22,
+                "inc"    : 53.2 ,
+                "alt"    :540.0},
+            "csl1a3" : {
+                "label": "SL1.A3", 
+                "totSat" : 720 , 
+                "nPlane" : 36, 
+                "nSat"   : 20, 
+                "inc"    : 70   ,
+                "alt"    : 570.0},
+            "csl1a4" : {
+                "label": "SL1.A4",
+                "totSat" : 348 ,
+                "nPlane" : 6,
+                "nSat"   : 58,
+                "inc"    : 97.6 ,
+                "alt"    :560.0},
+            "csl1a5" : {
+                "label": "SL1.A5", 
+                "totSat" : 172 , 
+                "nPlane" :  4, 
+                "nSat"   : 43, 
+                "inc"    : 97.6 ,
+                "alt"    : 560.0},
+            "csl1b1" : {
+                "label": "SL1.B1",
+                "totSat" : 2493,
+                "nPlane" : 42,
+                "nSat"   : 60,
+                "inc"    : 42   ,
+                "alt"    :335.9},
+            "csl1b2" : {
+                "label": "SL1.B2", 
+                "totSat" : 2478, 
+                "nPlane" : 42, 
+                "nSat"   : 60, 
+                "inc"    : 48   ,
+                "alt"    : 340.8},
+            "csl1b3" : {
+                "label": "SL1.B3",
+                "totSat" : 2547,
+                "nPlane" : 42,
+                "nSat"   : 60,
+                "inc"    : 53   ,
+                "alt"    :345.6}
+        }
+    },
+    {
+        "name" : "Starlink Gen-2",
+        "comment" : "(random orbits are grouped in planes)",
+        "code" : "SL2",
+        "shells" : {
+            "csl2a1" : {
+                "label" : "SL2.A1",
+                "totSat": 7178,
+                "nPlane": 84,
+                "nSat"  : 86,
+                "inc"   : 30.0,
+                "alt"   : 328.0},
+            "csl2a2" : {
+                "label" : "SL2.A2",
+                "totSat": 7178,
+                "nPlane": 84,
+                "nSat"  : 86,
+                "inc"   : 40.0,
+                "alt"   : 334.0},
+            "csl2a3" : {
+                "label" : "SL2.A3",
+                "totSat": 7178,
+                "nPlane": 84,
+                "nSat"  : 86,
+                "inc"   : 53.0,
+                "alt"   : 345.0},
+            "csl2a4" : {
+                "label" : "SL2.A4",
+                "totSat": 2000,
+                "nPlane": 40,
+                "nSat"  : 50,
+                "inc"   : 96.9,
+                "alt"   : 360.0},
+            "csl2a5" : {
+                "label" : "SL2.A5",
+                "totSat": 1998,
+                "nPlane": 20,
+                "nSat"  : 100,
+                "inc"   : 75.0,
+                "alt"   : 373.0},
+            "csl2b0" : {
+                "label" : "SL2.B" ,
+                "totSat": 4000,
+                "nPlane": 40,
+                "nSat"  : 100,
+                "inc"   : 53.0,
+                "alt"   : 499.0},
+            "csl2c1" : {
+                "label" : "SL2.C1",
+                "totSat": 144 ,
+                "nPlane": 12,
+                "nSat"  : 12,
+                "inc"   : 148.0,
+                "alt"   : 604.0},
+            "csl2c2" : {
+                "label" : "SL2.C2",
+                "totSat": 324 ,
+                "nPlane": 18,
+                "nSat"  : 18,
+                "inc"   : 116.0,
+                "alt"   : 614.0}
+        }
+    },
+    {
+        "name" : "Fake StarLink on high orbits",
+        "comment" : "Fake constellation for tests",
+        "code" : "highSL",
+        "shells" : {
+            "hcsl1a1" : {
+                "label" :"SL1.A1",
+                "totSat": 1584,
+                "nPlane": 72,
+                "nSat"  : 22,
+                "inc"   : 53.0  ,
+                "alt"   : 1550.0 },
+            "hcsl1a2" : {
+                "label" :"SL1.A2",
+                "totSat": 1584,
+                "nPlane": 72,
+                "nSat"  : 22,
+                "inc"   : 53.2  ,
+                "alt"   : 1540.0 },
+            "hcsl1a3" : {
+                "label" :"SL1.A3",
+                "totSat": 720 ,
+                "nPlane": 36,
+                "nSat"  : 20,
+                "inc"   : 70.0,
+                "alt"   : 1570.0 },
+            "hcsl1a4" : {
+                "label" :"SL1.A4",
+                "totSat": 348,
+                "nPlane": 6,
+                "nSat"  : 58,
+                "inc"   : 97.6  ,
+                "alt"   : 1560.0 },
+            "hcsl1a5" : {
+                "label" :"SL1.A5",
+                "totSat": 172 ,
+                "nPlane": 4,
+                "nSat"  : 43,
+                "inc"   : 97.6  ,
+                "alt"   : 1560.0 },
+            "hcsl1b1" : {
+                "label" :"SL1.B1",
+                "totSat": 2493,
+                "nPlane": 42,
+                "nSat"  : 60,
+                "inc"   : 42.0,
+                "alt"   : 1335.9 },
+            "hcsl1b2" : {
+                "label" :"SL1.B2",
+                "totSat": 2478,
+                "nPlane": 42,
+                "nSat"  : 60,
+                "inc"   : 48.0,
+                "alt"   : 1340.8 },
+            "hcsl1b3" : {
+                "label" :"SL1.B3",
+                "totSat": 2547,
+                "nPlane": 42,
+                "nSat"  : 60,
+                "inc"   : 53.0,
+                "alt"   : 1345.6 },
+            "hcsl2a1" : {
+                "label" :"SL2.A1",
+                "totSat": 7178,
+                "nPlane": 84,
+                "nSat"  : 86,
+                "inc"   : 30.0,
+                "alt"   : 1328.0 },
+            "hcsl2a2" : {
+                "label" :"SL2.A2",
+                "totSat": 7178,
+                "nPlane": 84,
+                "nSat"  : 86,
+                "inc"   : 40.0,
+                "alt"   : 1334.0 },
+            "hcsl2a3" : {
+                "label" :"SL2.A3",
+                "totSat": 7178,
+                "nPlane": 84,
+                "nSat"  : 6,
+                "inc"   : 53.0,
+                "alt"   : 1345.0 },
+            "hcsl2a4" : {
+                "label" :"SL2.A4",
+                "totSat": 2000,
+                "nPlane": 40,
+                "nSat"  : 50,
+                "inc"   : 96.9,
+                "alt"   : 1360.0},
+            "hcsl2a5" : {
+                "label" :"SL2.A5",
+                "totSat": 1998,
+                "nPlane": 20,
+                "nSat"  : 100,
+                "inc"   : 75.0,
+                "alt"   : 1373.0 },
+            "hcsl2b0" : {
+                "label" :"SL2.B" ,
+                "totSat": 4000,
+                "nPlane": 40,
+                "nSat"  : 100,
+                "inc"   : 53.0,
+                "alt"   : 1499.0 },
+            "hcsl2c1" : {
+                "label" :"SL2.C1",
+                "totSat": 144 ,
+                "nPlane": 12,
+                "nSat"  : 12,
+                "inc"   : 148.0,
+                "alt"   : 1604.0 },
+            "hcsl2c2" : {
+                "label" :"SL2.C2",
+                "totSat": 324,
+                "nPlane": 18,
+                "nSat"  : 18,
+                "inc"   : 116.0,
+                "alt"   : 1614.0 }
+        }
+    },
+    {
+        "name" : "Test constellation 'Franz'",
+        "code" : "FRZ",
+        "comment" : "Test constellation, not real",
+        "shells" : {
+            "fsl1" : {
+                "label" :"FSL1",
+                "totSat": 7140,
+                "nPlane": 84,
+                "nSat"  : 85,
+                "inc"   : 30.0,
+                "alt"   : 328.0},
+            "fsl2" : {
+                "label" :"FSL2",
+                "totSat": 7140,
+                "nPlane": 84,
+                "nSat"  : 85,
+                "inc"   : 40.0,
+                "alt"   : 334.0},
+            "fsl3" : {
+                "label" :"FSL3",
+                "totSat": 7140,
+                "nPlane": 84,
+                "nSat"  : 85,
+                "inc"   : 53.0,
+                "alt"   : 345.0},
+            "fsl4" : {
+                "label" :"FSL4",
+                "totSat": 2000,
+                "nPlane": 20,
+                "nSat"  : 100,
+                "inc"   : 75.0,
+                "alt"   : 373.0},
+            "fsl5" : {
+                "label" :"FSL5",
+                "totSat": 4000,
+                "nPlane": 40,
+                "nSat"  : 100,
+                "inc"   : 53.0,
+                "alt"   : 499.0},
+            "fsl6" : {
+                "label" :"FSL6",
+                "totSat": 4000,
+                "nPlane": 40,
+                "nSat"  : 100,
+                "inc"   : 53.0,
+                "alt"   : 499.0},
+            "fsl7" : {
+                "label" :"FSL7",
+                "totSat": 144,
+                "nPlane": 12,
+                "nSat"  : 12,
+                "inc"   : 148.0,
+                "alt"   : 604.0},
+            "fsl8" : {
+                "label" :"FSL8",
+                "totSat": 324,
+                "nPlane": 18,
+                "nSat"  : 18,
+                "inc"   : 116.0,
+                "alt"   : 614.0},
+            "fsl9" : {
+                "label" :"FSL9",
+                "totSat": 2000,
+                "nPlane": 40,
+                "nSat"  : 50,
+                "inc"   : 97.0,
+                "alt"   : 360.0}
+        }
+    },
+    {
+        "name" : "ESPACE Rwanda",
+        "code" : "ESP",
+        "shells" : {
+            "esp01" : {
+                "label" :"E-Sp01",
+                "totSat": 360,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 0.0,
+                "alt"   : 550.0 },
+            "esp02" : {
+                "label" :"E-Sp02",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 24.0,
+                "alt"   : 552.0 },
+            "esp03" : {
+                "label" :"E-Sp03",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 27.0,
+                "alt"   : 556.0 },
+            "esp04" : {
+                "label" :"E-Sp04",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 30.0,
+                "alt"   : 559.0 },
+            "esp05" : {
+                "label" :"E-Sp05",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 33.0,
+                "alt"   : 563.0 },
+            "esp06" : {
+                "label" :"E-Sp06",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 36.0,
+                "alt"   : 556.0 },
+            "esp07" : {
+                "label" :"E-Sp07",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 39.0,
+                "alt"   : 570.0 },
+            "esp08" : {
+                "label" :"E-Sp08",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 42.0,
+                "alt"   : 574.0 },
+            "esp09" : {
+                "label" :"E-Sp09",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 45.0,
+                "alt"   : 577.0 },
+            "esp10" : {
+                "label" :"E-Sp10",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 48.0,
+                "alt"   : 581.0 },
+            "esp11" : {
+                "label" :"E-Sp11",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 51.0,
+                "alt"   : 584.0 },
+            "esp12" : {
+                "label" :"E-Sp12",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 54.0,
+                "alt"   : 588.0 },
+            "esp13" : {
+                "label" :"E-Sp13",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 57.0,
+                "alt"   : 592.0 },
+            "esp14" : {
+                "label" :"E-Sp14",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 60.0,
+                "alt"   : 595.0 },
+            "esp15" : {
+                "label" :"E-Sp15",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 63.0,
+                "alt"   : 599.0 },
+            "esp16" : {
+                "label" :"E-Sp16",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 66.0,
+                "alt"   : 602.0 },
+            "esp17" : {
+                "label" :"E-Sp17",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 69.0,
+                "alt"   : 606.0 },
+            "esp18" : {
+                "label" :"E-Sp18",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 72.0,
+                "alt"   : 610.0 },
+            "esp19" : {
+                "label" :"E-Sp19",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 75.0,
+                "alt"   : 613.0 },
+            "esp20" : {
+                "label" :"E-Sp20",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 78.0,
+                "alt"   : 617.0 },
+            "esp21" : {
+                "label" :"E-Sp21",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 81.0,
+                "alt"   : 617.0 },
+            "esp22" : {
+                "label" :"E-Sp22",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 84.0,
+                "alt"   : 620.0 },
+            "esp23" : {
+                "label" :"E-Sp23",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 97.0,
+                "alt"   : 624.0 },
+            "esp24" : {
+                "label" :"E-Sp24",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 90.0,
+                "alt"   : 628.0 },
+            "esp25" : {
+                "label" :"E-Sp25",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 93.0,
+                "alt"   : 631.0 },
+            "esp26" : {
+                "label" :"E-Sp26",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 96.0,
+                "alt"   : 635.0 },
+            "esp27" : {
+                "label" :"E-Sp27",
+                "totSat": 12960,
+                "nPlane": 1,
+                "nSat"  : 360,
+                "inc"   : 98.0,
+                "alt"   : 638.0 },
+            "esp28" : {
+                "label" :"E-Sp28",
+                "totSat": 3,
+                "nPlane": 1,
+                "nSat"  : 3,
+                "inc"   : 97.5,
+                "alt"   : 528.0 }
+        }
+    },
+    {
+        "name" : "OneWeb-2 (original)",
+        "comment" : "Original architecture, deprecated",
+        "code" : "OW2o",
+        "shells" : {
+            "cowa" : {
+                "label" :"OW2 A",
+                "totSat": 1764,
+                "nPlane": 36,
+                "nSat"  : 49,
+                "inc"   : 87.9,
+                "alt"   : 1200.0},
+            "cowb" : {
+                "label" :"OW2 B",
+                "totSat": 23040,
+                "nPlane": 128,
+                "nSat"  : 180,
+                "inc"   : 40.0,
+                "alt"   : 1200.0},
+            "cowc" : {
+                "label" :"OW2 C",
+                "totSat": 23040,
+                "nPlane": 128,
+                "nSat"  : 180,
+                "inc"   : 55.0,
+                "alt"   : 1200.0}
+        }
+    },
+    {
+        "name" : "OneWeb-2 (reduced 2021)",
+        "comment" : "Reduced architecture as of 2021",
+        "code" : "OW2r",
+        "shells" : {
+            "cow2a" : {
+                "label":"OW2 A",
+                "totSat": 1764,
+                "nPlane": 36,
+                "nSat"  : 49,
+                "inc"   : 87.9,
+                "alt"   : 1200.0},
+            "cow2b" : {
+                "label" :"OW2 B",
+                "totSat": 2304,
+                "nPlane": 32,
+                "nSat"  : 72,
+                "inc"   : 40.0,
+                "alt"   : 1200.0},
+            "cow2c" : {
+                "label" :"OW2 C",
+                "totSat": 2304,
+                "nPlane": 32,
+                "nSat"  : 72,
+                "inc"   : 55.0,
+                "alt"   : 1200.0}
+        }
+    },
+    {
+        "name" : "Guo Wang (China) GW-A59 -2",
+        "code" : "GW",
+        "shells" : {
+            "cgw11" : {
+                "label" :"GW-A59.1",
+                "totSat": 480,
+                "nPlane": 8,
+                "nSat"  : 60,
+                "inc"   : 85.0,
+                "alt"   : 590.0}, 
+            "cgw12" : {
+                "label" :"GW-A59.2",
+                "totSat": 2000,
+                "nPlane": 40,
+                "nSat"  : 50,
+                "inc"   : 50.0,
+                "alt"   : 600.0}, 
+            "cgw13" : {
+                "label" :"GW-A59.3",
+                "totSat": 3600,
+                "nPlane": 60,
+                "nSat"  : 60,
+                "inc"   : 55.0,
+                "alt"   : 508.0}, 
+            "cgw21" : {
+                "label" :"GW.2.1",
+                "totSat": 1728,
+                "nPlane": 27,
+                "nSat"  : 64,
+                "inc"   : 30.0,
+                "alt"   : 1145.0}, 
+            "cgw22" : {
+                "label" :"GW.2.2",
+                "totSat": 1728,
+                "nPlane": 27,
+                "nSat"  : 64,
+                "inc"   : 40.0,
+                "alt"   : 1145.0}, 
+            "cgw23" : {
+                "label" :"GW.2.3",
+                "totSat": 1728,
+                "nPlane": 27,
+                "nSat"  : 64,
+                "inc"   : 50.0,
+                "alt"   : 1145.0}, 
+            "cgw24" : {
+                "label" :"GW.2.4",
+                "totSat": 1728,
+                "nPlane": 27,
+                "nSat"  : 64,
+                "inc"   : 60.0,
+                "alt"   : 1145.0}
+        }
+    },
+    {
+        "name" : "Amazon Kuiper",
+        "code" : "AK",
+        "shells" : {
+            "cak1" : {
+                "label" :"AK.1",
+                "totSat": 784,
+                "nPlane": 28,
+                "nSat"  : 28,
+                "inc"   : 33.0,
+                "alt"   : 590.0}, 
+            "cak2" : {
+                "label" :"AK.2",
+                "totSat": 1296,
+                "nPlane": 36,
+                "nSat"  : 36,
+                "inc"   : 42.0,
+                "alt"   : 610.0}, 
+            "cak3" : {
+                "label" :"AK.3",
+                "totSat": 1156,
+                "nPlane": 34,
+                "nSat"  : 34,
+                "inc"   : 52.0,
+                "alt"   : 630.0}
+        }
+    },
+    {
+        "name" : "Galaxy Space  Yinhe",
+        "comment" : "inc and nPlane unknown",
+        "code" : "GS",
+        "shells" : {
+            "gs1" : {
+                "label" :"GSY",
+                "totSat": 1000,
+                "nPlane": 10,
+                "nSat"  : 100,
+                "inc"   : 45.0,
+                "alt"   : 500.0}
+        }
+    },
+    {
+        "name" : "HanWha systems",
+        "code" : "HWS",
+        "comment" : "inc and nPlane unknown",
+        "shells" : {
+            "gs2" : {
+                "label" :"HWS",
+                "totSat": 2000,
+                "nPlane": 20,
+                "nSat"  : 100,
+                "inc"   : 45.0,
+                "alt"   : 500.0}
+        }
+    },
+    {
+        "name" : "Lynk Global cell",
+        "comment" : "inc and nPlane unknown",
+        "code" : "LGC",
+        "shells" : {
+            "gs3" : {
+                "label" :"Lynk",
+                "totSat": 2000,
+                "nPlane": 20,
+                "nSat"  : 100,
+                "inc"   : 45.0,
+                "alt"   : 500.0}
+        }
+    },
+    {
+        "name" : "Today\"s pre-constellation satellites (2020)",
+        "comment" : "Synthetic distributino",
+        "code" : "YESTURDAY",
+        "shells" : {
+            "todayHigh1" : {
+                "label" : "U-LEO1",
+                "totSat": 1110 ,
+                "nPlane": 60,
+                "nSat"  : 10,
+                "inc"   : 70.0,
+                "alt"   : 1055.0}, 
+            "todayHigh2" : {
+                "label" : "U-LEO2",
+                "totSat": 1110 ,
+                "nPlane": 60,
+                "nSat"  : 20,
+                "inc"   : 60.0,
+                "alt"   : 1055.0},
+            "todayLow" : {
+                "label" :  "L-LEO",
+                "totSat": 505,
+                "nPlane": 50,
+                "nSat"  : 10,
+                "inc"   : 60.0,
+                "alt"   : 505.0}
+        }
+    },
+    {
+        "name" : "Starlink and ONEWEB 2022-APR",
+        "code" : "TODAYconst",
+        "shells" : {
+            "todaySL" : {
+                "label" :  "SL"  ,
+                "totSat": 1635,
+                "nPlane": 72,
+                "nSat"  : 22,
+                "inc"   : 53.0,
+                "alt"   : 550.0},   
+            "todayOW" : {
+                "label" :  "OW2 A",
+                "totSat": 128,
+                "nPlane": 36,
+                "nSat"  : 49,
+                "inc"   : 87.9,
+                "alt"   : 1200.0}
+        }
+    }
+]
