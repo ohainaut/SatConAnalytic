@@ -4,6 +4,7 @@
 #
 
 import numpy as np
+import random
 
 # SatConAn: 
 import constants 
@@ -65,6 +66,8 @@ def findConstellations(constellationsll):
                                                           'SL1', 'SL2', 
                                                           'OW2r', 
                                                           'GW', 'AK', 'ESP']
+    else:
+        constellationsll = [ constellationsll ]
 
     return constellations.metaConstellation(constellationsll)
     
@@ -161,7 +164,7 @@ def integrateSat(ElLim, AzEl, density ):
     i = len(AzEl[1,:,0]) -1 # we start at zenith
     step = AzEl[1,1,0] - AzEl[1,0,0] # step in elevation
     
-    while i >=0: # scan elevation rings
+    while i >=0 and Eli < len(ElLim): # scan elevation rings
         if AzEl[1,i,0] <= ElLim[Eli]:
             # close one of the requested elevations
             ElCum[Eli] = wCum
@@ -193,7 +196,7 @@ def Pol2Rec(AzEl,R):
     Azr = np.radians(AzEl[0])
     Elr = np.radians(AzEl[1])
     cE = np.cos(Elr)
-    XYZ = np.array(R*np.array([np.cos(Azr) *cE ,
+    XYZ = np.array( R*np.array([np.cos(Azr) *cE ,
                     np.sin(Azr) *cE ,
                     np.sin(Elr)
                     ]))
@@ -555,13 +558,25 @@ def AzEl2Vel(alpha, delta, Delta,lat,inc,alt):
         
     return AngularVel
 #-------------------------------------------------------------------------
+#-------------------------------------------------------------------------
+#-------------------------------------------------------------------------
+#-------------------------------------------------------------------------
+#-------------------------------------------------------------------------
+#-------------------------------------------------------------------------
+#-------------------------------------------------------------------------
+#-------------------------------------------------------------------------
+
+
+
+
 
 
 def modelOneConstMag(AzEl,lat, alphas,deltas,
                      inc,alt,num ):
-    '''Model one shell over a set of Az,El pointings
+    '''Model one single shell over a set of Az,El pointings
     IN
-    - AzEl: array [ array of Azimuths, array of Elevations]  [deg]
+    - AzEl: array [ array of Azimuths, array of Elevations] on which the
+      constellation shall be evaluated. Both in [deg]
     - lat: latitude of the observer [deg]
     - alphas, deltas: HourAngle and Dec. of the Sun [deg]
     - inc, alt, num: parameters of the satellite constellation shell:
@@ -569,13 +584,9 @@ def modelOneConstMag(AzEl,lat, alphas,deltas,
       - alt: altitude [km]
       - num: number of satellites in the shell
     OUT
-    - satellite number density (same shape as AzEl)
-    - satellite apparent angular velocity (same shape as AzEl)
-    - magnitude of the satellite
-            np.reshape(wdensityi,  (AzEl.shape[1],AzEl.shape[2]) ) ,\
-        np.reshape(wAngularVel, (AzEl.shape[1],AzEl.shape[2]) ),\
-        mag
-
+    - illuminated satellite number density (same shape as AzEl)
+    - illuminated satellite apparent angular velocity (same shape as AzEl)
+    - illuminated satellite magnitudes
     '''
 
 

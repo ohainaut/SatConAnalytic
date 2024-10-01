@@ -10,11 +10,14 @@
 #au = 149597870.7 # Astronomical unit in km
 
 gravityMu     = 398600.5  # Earth gravitation constant [km^3 / s^2]
+G             = 6.67430E-11 # Gravity
+earthMass     = 5.972E24 # mass of the Earth kg
 earthRadius   = 6378.1371 # Earth radius [km]
 earthRotation = 7.292114992e-5 # Earth rotation rate [rad / s]
 extinction = 0.12 # extinction in V  [mag/airmass]
 
-mag550 = 5.7 # magnitude of a satellite at zenith at 550km - 5.7 = 7.0 at 1000km
+mag550 = 7. # magnitude of a satellite at zenith at 550km 
+#mag550 = 5.7 # magnitude of a satellite at zenith at 550km - 5.7 = 7.0 at 1000km
 #mag550 = 4.7 # magnitude of a satellite at zenith at 550km - 5.7 = 6.0 at 1000km
     
 
