@@ -56,35 +56,9 @@ rao      = float(myargs.RA)
 deo      = float(myargs.DEC)
 objlabel = myargs.objlabel
 
-if myargs.code is None: 
-    myargs.code = 'DEFAULTS'
-    #, , , , , fovw, \
-    #    , , ,  =    cp.findPreset(myargs.code)
-myTel = cp.findTelescope(myargs.code)
-
-
-# overload specific tel/ins setup parameters:
-
-for what in [
-    'expt',
-    'fovl',
-    'magbloom',
-    'maglim',
-    'resol',
-    'trailf',
-    'lat',
-    'telescope',
-    'instrument'
-]:
-    if myargs.__dict__[what] is not None:
-        myTel.__dict__[what] = float(myargs.__dict__[what])
-
-if myargs.fovw is not None:
-    myTel.fovw = myargs.fovw
-else:
-    myTel.fovw = myTel.fovw *1.
-
+#- find telescope
 print('TELESCOPE/INSTRUMENT SETUP')
+myTel = cp.getTelescope(myargs)
 print(myTel)
 
 #---

@@ -10,7 +10,11 @@ Alternatively, the plot can show
 - the effect of the satellites on the observations (%loss)
 - the sky brighness increase caused by satellites.
 
-obsplot.py -h for usage
+Optionally, a discrete realization of the satellites can be overplotted
+(i.e. positions of the satellites as dots)
+
+
+option -h for detailed usage
 '''
 
 import matplotlib
@@ -22,6 +26,7 @@ import sys
 import os
 #sys.path.append(os.path.dirname(__file__)+"/../")
 
+print('conAn ObsSky')
 
 from matplotlib import ticker
 from conanplot import gyrd
@@ -30,7 +35,8 @@ from conanplot import gyrd
 # import ConAn routines
 import conan as ca
 import conanplot as cp
-from constants import mag550
+import constants as cst
+import satDots
 
 #----- config
 step = 0.75 #deg >~1. Smaller values take forever
@@ -48,7 +54,7 @@ parser.add_argument('-d','--deltaSun', default=0.,
                     help="Sun: Declination of the Sun [deg]")
 parser.add_argument('-a','--alphaSun', 
                     help="Sun: Hour Angle of the Sun [deg]. If present, overwrites elevSun")
-parser.add_argument('-e','--elevSun', default=-24.,
+parser.add_argument('-e','--elevSun', default=24.,
                     help="Sun: Elevation of the Sun BELOW the horizon. Should probably be >0 in most cases [deg]")
 parser.add_argument('-C','--constellations', default='SLOWGWAK',
                     help="ID of the constellation group; list for a list")
@@ -99,43 +105,30 @@ parser.add_argument('--pdf', action='store_true',
 myargs = parser.parse_args()
 
 
-if myargs.code is None: 
-    myargs.code = 'DEFAULT'
-myTel = cp.findTelescope(myargs.code)
-
-# overload specific tel/ins setup parameters:
-for what in [
-    'expt',
-    'fovl',
-    'magbloom',
-    'maglim',
-    'resol',
-    'trailf',
-    'lat',
-    'telescope',
-    'instrument'
-]:
-    if myargs.__dict__[what] is not None:
-        myTel.__dict__[what] = float(myargs.__dict__[what])
-
-if myTel.fovw is not None:
-    myTel.fovw = myTel.fovw
-else:
-    myTel.fovw = myTel.fovw *1.
-
 print('TELESCOPE/INSTRUMENT SETUP')
+myTel = cp.getTelescope(myargs)
 print(myTel)
 
 
 # sun
 
 sunDelta = float(myargs.deltaSun)
-sunElev  = float(myargs.elevSun)   
+sunElev  = -float(myargs.elevSun)   
 if myargs.alphaSun is None:
     sunAlpha = ca.elev2ra(sunElev,sunDelta,myTel.lat) # get sun hourangle for twilight
 else:
     sunAlpha = float(myargs.alphaSun)
     sunElev = ca.radec2elev(sunAlpha,sunDelta,myTel.lat)
+
+
+print('SUN:')
+print(f'\tLocal time: {((180+sunAlpha)/15.)%24:.2f}h')
+print(f'\tHA = {sunAlpha:.1f}deg  = {(sunAlpha/15.)%24:.2f}h, Dec = {sunDelta:.1f}d')
+print(f'\tElevation: {sunElev:.2f}d')
+    
+
+wAz, wEl = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
+print(f'Validation: az= {wAz:.2f}, el= {wEl:.2f}d\n')
 
 
 
@@ -304,12 +297,12 @@ print ("telinslabel",myargs.code)
 if myargs.code == "TrailDens":
     ldens = np.log10( dv )
     densl = "Number of trails./deg/sec."
-    #print("Tdensity")
+    print("Tdensity")
 
 elif myargs.code == "SatDens":
     ldens = np.log10( ds )
     densl = "Number of sat./sq.deg."
-    #print("Sdensity")
+    print("Sdensity")
 
 elif myargs.code == "skyMag":
     ldens =  2.5* np.log10( fluxSatTotal )
@@ -566,8 +559,9 @@ if myargs.labelplotflag:
     x = 1.
     y = -1.08 -dy
     if 1:
-        lab = "Satellite magnitudes: V$_{1000km}=$" +\
-            "{:3.1f}".format(mag550 -5.*np.log10(550./1000.) )
+        lab = "Satellite magnitudes: V$_{550km}=$" +\
+            f'{cst.mag550:3.1f}' 
+#            "{:3.1f}".format(cst.mag550 -5.*np.log10(550./1000.) )
         cp.azlab(ax,x,y,lab)
         y -= dy
 
@@ -602,6 +596,32 @@ if myargs.almucantar and myargs.plotflag:
     # sat count on almucantars
     for we, wi in zip(elLim, elCount):
         cp.azlab(ax,-0,(90.-we-5)/90.,'{:.0f} sat.>{:.0f}$^o$:'.format(wi,we),9,0.5*(1.-we/100.))
+
+
+
+if 1:
+    Sv = satDots.makeConstellationStatTable(CONSTELLATIONS, 
+                                            sunAlpha, sunDelta, 
+                                            myTel.lat, 
+                                            (180+sunAlpha)*3600.)
+
+
+    if myargs.mode == "ALL":
+        Si = Sv[  ~Sv["bIlluminated"] ]
+        ax.scatter(Si["Azr"],Si["ZD"], s=Si["dot"], c="grey", alpha=0.2)
+
+    Si = Sv[  Sv["bIlluminated"] ]
+    if myargs.mode in ["ALL",  "OBS"] :
+        Sb = Si[ Si["mag"] >= 7 ]
+        ax.scatter(Si["Azr"],Si["ZD"], s=Si["dot"], c="yellow")
+
+    if myargs.mode in ["ALL", "OBS","BRIGHT"] :
+        Sb = Si[ Si["mag"] < 7 ]
+        ax.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], c="red")
+
+
+    ###satDots.plot_legendMag()
+
 
 print('finishing...')
 
