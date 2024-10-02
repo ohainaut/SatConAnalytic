@@ -10,7 +10,11 @@ Alternatively, the plot can show
 - the effect of the satellites on the observations (%loss)
 - the sky brighness increase caused by satellites.
 
-obsplot.py -h for usage
+Optionally, a discrete realization of the satellites can be overplotted
+(i.e. positions of the satellites as dots)
+
+
+option -h for detailed usage
 '''
 
 import matplotlib
@@ -125,7 +129,6 @@ print(f'\tElevation: {sunElev:.2f}d')
 
 wAz, wEl = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
 print(f'Validation: az= {wAz:.2f}, el= {wEl:.2f}d\n')
-
 
 
 
@@ -617,7 +620,7 @@ if 1:
         ax.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], c="red")
 
 
-    satDots.legendMag()
+    ###satDots.plot_legendMag()
 
 
 print('finishing...')

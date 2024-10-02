@@ -1,16 +1,7 @@
 #!/usr/bin/env python3
 '''SatConAnalytic - Satellite Constellation Analytic simulations
 
-Plot satellite density over the map of the sky.
-
-Alternatively, the plot can show
-- velocity density of the satellites
-- the number of satellites / detectable satellites / saturating satellites / 
-  non-saturating satellites in the field of view of an instrument
-- the effect of the satellites on the observations (%loss)
-- the sky brighness increase caused by satellites.
-
-obsplot.py -h for usage
+work in progress
 '''
 
 import matplotlib
@@ -181,7 +172,6 @@ plt.yscale('log')
 plt.ylim(5.,1e4)
 plt.ylabel(f'Number of illuinated satellites above {elLim[iEl]}')
 plt.show() #block=False)
-
 
 
 asdfas

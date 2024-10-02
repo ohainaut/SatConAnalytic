@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SatConAnalytic - Satellite Constellation Analytic simulations
-# conan.py: definitions and generic constellation functions
+# conan.py:  generic constellation functions
 #
 
 import numpy as np
@@ -56,6 +56,7 @@ def findConstellations(constellationsll):
 
     if   constellationsll == 'SL' :  constellationsll = ['SL1', 'SL2']
     elif constellationsll == 'OW' :  constellationsll = ['OW2r']
+    elif constellationsll == 'SLOW' :  constellationsll = ['SL1', 'SL2','OW2r']
     elif constellationsll == 'TODAY':constellationsll = ['YESTURDAY', 'TODAYconst']
     elif constellationsll == 'SLOWGWAK':constellationsll = ['YESTURDAY',
                                                             'SL1','SL2',

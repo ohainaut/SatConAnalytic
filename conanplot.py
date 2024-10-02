@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-# SatConAnalytic - Satellite Constellation Analytic simulations
-#
-# ploting functions
+'''SatConAnalytic - Satellite Constellation Analytic simulations
+
+ploting functions supporting conAn 
+'''
 #==============================================================================
 
 import numpy as np
@@ -76,7 +77,7 @@ def findTelescope(telinslabel):
 #------------------------------------------------------------------------------
 
 def initPolPlot(ax):
-    # initialize a polar plot
+    '''initialize a polar plot'''
     
     plt.rcParams.update({'font.size': 15})
     ax.set_theta_zero_location('N')  
@@ -90,12 +91,15 @@ def initPolPlot(ax):
 #------------------------------------------------------------------------------
 
 def plotOneDens(ax, AzEl, dens, label):
-    # plot a density function
-    # ax: axis object where to plot
-    # AzEl: array with the azimut and elevations
-    # dens: the density array to be plotted
-    # label: label...
-    
+    '''plot a density function
+    IN
+    - ax: axis object where to plot
+    - AzEl: array with the azimut and elevations
+    - dens: the density array to be plotted
+    - label: label...
+    OUT: updated plot in ax.
+    '''
+
     cmap = 'magma'
     clab = 'cyan'
     ccon = 'cyan'
@@ -121,7 +125,7 @@ def plotOneDens(ax, AzEl, dens, label):
 #------------------------------------------------------------------------------
 
 def plotDens(AzEl, nplot, densities, labels, plotLabel):
-    # plot a series of density distributions
+    '''plot a series of density distributions'''
     
     if nplot == 1:
         fig = plt.figure(figsize=(8,8))
@@ -145,7 +149,7 @@ def plotDens(AzEl, nplot, densities, labels, plotLabel):
 #------------------------------------------------------------------------------
 
 def azlab(ax,x,y,lab,size=12,alpha=0):
-    # write labels at (x,y) on a polar plot in ax
+    '''write labels at (x,y) on a polar plot in ax'''
 
     rlab = np.sqrt(x*x + y*y)*90.
     azlab = np.arctan2(-x,y)
@@ -164,7 +168,7 @@ def azlab(ax,x,y,lab,size=12,alpha=0):
 #------------------------------------------------------------------------------
 
 def drawHADec(lat):
-    # draw the HA and Dec lines in an altaz plot
+    '''draw the HA and Dec lines in an altaz plot'''
 
     corl = 0.3
     corc = 'r'

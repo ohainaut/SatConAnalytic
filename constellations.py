@@ -41,7 +41,7 @@ class OneShell():
               self.__dict__[x] = oneShellJS[x]
           self.nSat = int( self.totSat / self.nPlane + 0.5)
      def __repr__(self):
-          return self.label
+          return f'{self.label}: {self.totSat} = {self.nPlane}*{self.nSat}sat, i={self.inc}'
 
 
      def orbitalElementsTable(self):
@@ -89,7 +89,7 @@ class OneShell():
 class Constellation():
      '''define a single constellation
 
-     which contains one of more shells
+     which is made of one of more shells
      '''
      def __init__(self, oneConstJS):
           for x in list(oneConstJS):
@@ -171,6 +171,7 @@ class Constellations():
 
 
 def readConstellations( file='constellations.json'):
+     '''Reads a constellation json file into a Constellations object'''
      allConst = readConstellationFile(file)
      return  Constellations( allConst)
 

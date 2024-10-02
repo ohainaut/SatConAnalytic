@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
-# SatConAnalytic - Satellite Constellation Analytic simulations
-#
-# plot the satellites plot over a skymap 
-# (satDist new gen)
+''' SatConAnalytic 
+
+Plot the satellites plot over a skymap, with additional statistics.
+This is *not* an analytical representation of the satellite density,
+This is a traditional "discrete" representation of the satellites.
+
+Notes
+- the orbits are circular
+- the motion of the satellites on their orbit is/can be slowed to make
+  smoother animations (at natural speed, they are so fast that 
+  the time step of the animation must be very small)
+
+- this is a new implementation of vintage satDist
+'''
 
 import argparse, logging
 
@@ -42,13 +52,18 @@ def propagateTimeAnom(anom0, omega, times):
 #-----------------------------------------------------------------------------
 
 def propagateTimeNode(node0, times):
-    # rotate the whole constellation (i.e. the Earth is rotatin under it)
-    # [rad], [s] -> [rad] 
+    '''rotate the whole constellation (i.e. the Earth is rotatin under it)
+    
+    [rad], [s] -> [rad] '''
+
     return node0 + times /86400. *2.*np.pi  
 #-----------------------------------------------------------------------------
 
 def elementsToLongLat(noder,incr,anomr):
-    '''from propagated elements, get long, lat [rad]'''
+    '''get long, lat [rad] from propagated elements
+     
+    all in [rad] 
+    '''
 
     latr   = np.arcsin(   np.sin( anomr ) *np.sin( incr )  )
     longr  = ( noder + np.arctan( np.tan( anomr ) *np.cos( incr )) 
@@ -152,11 +167,17 @@ def satMag(x,y,z, alt, mag550=cst.mag550, Delta=None, Sun=None):
 #-----------------------------------------------------------------------------
 
 def magToDotSize(  mag  ):
+    '''scale magnitude into a matplotlib dot size'''
 
-    return  0.25*(11.-mag )**4 # size of the dot
+    return  0.25*(11.-mag )**3 # size of the dot
 
 #-----------------------------------------------------------------------------
-def elevMag(ax, Sv):
+def plot_elevMag(ax, Sv):
+    '''plot mag vs zd and histogram of mag vs zd
+    
+    ax: the axes on which to plot
+    Sv: a satellite Table
+    '''
 
     Si = Sv[  Sv["bIlluminated"] ]
     Sb = Si[ Si["mag"] < 7 ]
@@ -189,10 +210,13 @@ def elevMag(ax, Sv):
 
     #ax.set_ylim(11,4)
     ax.set_xticks( np.arange(0.,91,30.))
+    ax.set_xlabel("Zenithal Distance [deg]")
+    ax.set_ylabel("Mag")
+    axH.set_label("Count")
     #ax.set_yticks( np.arange( 4., 11))
 
 #-----------------------------------------------------------------------------
-def legendMag(ax, minMag=5,maxMag=11.1):
+def plot_legendMag(ax, minMag=5,maxMag=11.1):
     minMag = min(5, minMag)
     maxMag = max(11.1,maxMag)
 
@@ -209,7 +233,7 @@ def legendMag(ax, minMag=5,maxMag=11.1):
                     verticalalignment= 'center')
 
     plotit( np.arange(int(minMag),6.1,1.) , 'red')
-    plotit( np.arange(7,int(maxMag)) , 'yellow')
+    plotit( np.arange(7,int(maxMag)) , 'orange')
 
     #ax.set_title('Mag', size=10)
     ax.set_xlim( -.6,1.5)
@@ -236,11 +260,11 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
 
 
     # revolution of the sat
-    SAT["anomr"] = propagateTimeAnom(SAT["anom0"], SAT["omega"], times)
+    SAT["anomr"] = propagateTimeAnom(SAT["anom0"], SAT["omega"], times/90.)
     #SAT["anomr"] = SAT["anom0"].copy()
 
     # rotation of the Earth
-    SAT["noder"] = propagateTimeNode(SAT["node0"], times)
+    SAT["noder"] = propagateTimeNode(SAT["node0"], times/90.)
     #SAT["noder"] = SAT["node0"].copy()
 
     SAT["latr"],SAT["longr"] = elementsToLongLat(SAT["noder"], SAT["inc"], SAT["anomr"])
@@ -310,9 +334,10 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
 if __name__ == "__main__":
  
     #--- command line arguments
-    parser = argparse.ArgumentParser(description='Constellation density calendar for an object')
+    parser = argparse.ArgumentParser(
+        description='Compute and plot the position and magnitude of each satellite')
     parser.add_argument('-a','--RA',         default=0.,
-                        help='''Right Ascension [deg]''')
+                        help='''local time [h]''')
     parser.add_argument('-d','--DEC',        default=0.,
                         help='''Declination of the Sun [deg]''')
     parser.add_argument('-n','--objlabel',  default="",
@@ -431,11 +456,20 @@ if __name__ == "__main__":
 
     if 1:
         #ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
+
+        if sunElev > 0:
+            pass
+        elif sunElev > -18:
+            icol = (18+sunElev)/18.
+            axPol.set_facecolor( (icol,icol,icol))
+        else: 
+            axPol.set_facecolor( "k")
+
         cp.initPolPlot(axPol)
 
         if myargs.mode == "ALL":
             Sd = Sv[  ~Sv["bIlluminated"] ]
-            axPol.scatter(Sd["Azr"],Sd["ZD"], s=Sd["dot"], c="k", alpha=0.5)
+            axPol.scatter(Sd["Azr"],Sd["ZD"], s=Sd["dot"], c="darkblue", alpha=0.5)
 
         Si = Sv[  Sv["bIlluminated"] ]
         if myargs.mode in ["ALL",  "OBS"] :
@@ -476,11 +510,12 @@ if __name__ == "__main__":
 
 
 
-    legendMag(axLegend)
+    plot_legendMag(axLegend)
 
-    elevMag(axHist, Sv)
+    plot_elevMag(axHist, Sv)
 
     #fig.tight_layout()
-    plt.savefig('w.png')
+    plt.savefig(f'w.png')
+    #plt.savefig(f'w{int(times)}.png')
 #--
     log.info('============================================================================')
