@@ -789,7 +789,7 @@
     },
     {
         "name" : "Starlink and ONEWEB 2022-APR",
-        "code" : "TODAYconst",
+        "code" : "2022const",
         "shells" : {
             "todaySL" : {
                 "label" :  "SL"  ,
@@ -801,6 +801,26 @@
             "todayOW" : {
                 "label" :  "OW2 A",
                 "totSat": 128,
+                "nPlane": 36,
+                "nSat"  : 49,
+                "inc"   : 87.9,
+                "alt"   : 1200.0}
+        }
+    },
+    {
+        "name" : "Starlink and ONEWEB 2024-Nov",
+        "code" : "TODAYconst",
+        "shells" : {
+            "todaySL" : {
+                "label" :  "SL"  ,
+                "totSat": 5956,
+                "nPlane": 72,
+                "nSat"  : 22,
+                "inc"   : 53.0,
+                "alt"   : 550.0},   
+            "todayOW" : {
+                "label" :  "OW2 A",
+                "totSat": 627,
                 "nPlane": 36,
                 "nSat"  : 49,
                 "inc"   : 87.9,

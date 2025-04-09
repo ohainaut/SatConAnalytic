@@ -49,17 +49,23 @@ def getTelescope(myargs):
         'maglim',
         'resol',
         'trailf',
-        'lat',
-        'telescope',
-        'instrument'
+        'lat'
     ]:
         if myargs.__dict__[what] is not None:
             myTel.__dict__[what] = float(myargs.__dict__[what])
 
+
+    for what in [
+        'telescope',
+        'instrument'
+    ]:
+        if myargs.__dict__[what] is not None:
+            myTel.__dict__[what] = myargs.__dict__[what]
+
     if myargs.fovw is not None:
-        myTel.fovw = myargs.fovw
+        myTel.fovw = float(myargs.fovw)
     else:
-        myTel.fovw = myTel.fovw *1.
+        myTel.fovw = myTel.fovl *1.
 
     return myTel
 

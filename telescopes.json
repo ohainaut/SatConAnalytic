@@ -3,6 +3,17 @@
 	"code" : "DEFAULT"
 	},
     {
+	"code" : "HESS",
+        "telescope"   : "HESS",
+        "lat"         : -23.27,
+        "instrument"  : "CT5",
+        "expt"        : 96E-9,
+        "fovl_arcsec" : 960.0,
+        "resol_arcsec" : 960.0,
+        "trail_arcsec"      : 960.0,        
+		"maglim"      : 10.0  
+    },
+    {
 	"code" : "FlyEye",
         "telescope"   : "ESA FlyEye",
         "lat"         : -29.25,

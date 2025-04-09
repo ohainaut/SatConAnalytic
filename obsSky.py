@@ -65,9 +65,9 @@ parser.add_argument('-r','--resol',
 parser.add_argument('-t','--expt', 
                     help="Observatory: Exposure time [sec]")
 parser.add_argument('-f','--fovl',
-                    help="Observatory: Field of view of the instrument. Length or diametre [arcsec]")
+                    help="Observatory: Field of view of the instrument. Length or diametre [deg]")
 parser.add_argument('-w','--fovw', 
-                    help="Observatory: Field of view of the instrument. Width. Equal to Length if omitted [arcsec]")
+                    help="Observatory: Field of view of the instrument. Width. Equal to Length if omitted [deg]")
 parser.add_argument('-m','--maglim', 
                     help="Observatory: Detection limit magnitude of the instrument [5sigma Mag during expTime]")
 parser.add_argument('--magbloom',
@@ -90,6 +90,12 @@ parser.add_argument('-T','--code',
 ''')
 parser.add_argument('-M','--mode', default="OBS",
                     help="Plot: ALL (Default), OBS, BRIGHT, FAINT, or EFFECT")
+
+parser.add_argument('--minmax', nargs=2, 
+                    help="min, max value for the colorscale")
+
+
+
 parser.add_argument('--noplot', action='store_false',
                     help="Plot: Don't generate the plot (mostly debug)")
 parser.add_argument('--noshade', action='store_true',
@@ -110,7 +116,9 @@ myTel = cp.getTelescope(myargs)
 print(myTel)
 
 
-# sun
+#
+# SUN
+#
 
 sunDelta = float(myargs.deltaSun)
 sunElev  = -float(myargs.elevSun)   
@@ -132,6 +140,8 @@ print(f'Validation: az= {wAz:.2f}, el= {wEl:.2f}d\n')
 
 
 
+
+
 # flags
 myargs.plotflag      = myargs.noplot
 myargs.shadeflag     = myargs.noshade
@@ -146,6 +156,16 @@ else:
 
 
 
+# output file
+outfileroot  = f'{myargs.code}_{myargs.constellations}_'
+outfileroot += f'{myargs.mode}_{int(myTel.lat):02d}_{int(sunAlpha):02d}'
+
+
+    
+######################################################################
+#---  COMPUTE CONSTELLATIONS
+
+
 # expand the constellation id into a list of real constellations
 CONSTELLATIONS = ca.findConstellations(myargs.constellations)
 print('CONSTELLATIONS:')
@@ -154,9 +174,6 @@ print()
 
 
 
-    
-######################################################################
-#---  COMPUTE CONSTELLATIONS
 
 #fill ElAz:
 AzEl = ca.fillAzEl(step)
@@ -192,7 +209,10 @@ for myShell in CONSTELLATIONS.shells:
     densVelAll += densSi * veli
 
     # effective magnitude and extremes
-    mageffi = magi  - 2.5*np.log10(myTel.resol/veli/myTel.expt)
+    # does the satellite trail more than 1 resolution element during expT:
+    trailing =  veli*myTel.expt >= myTel.resol
+    mageffi = magi*1.
+    mageffi[trailing] = magi[trailing]   - 2.5*np.log10(myTel.resol/veli[trailing] /myTel.expt)
     mageffmax = max(mageffmax,np.amax(mageffi))
     mageffmin = min(mageffmin,np.amin(mageffi))
 
@@ -229,10 +249,6 @@ if myargs.plotflag:
     print('- Sat density [n/sq.dg]', round( densSatAll[-1,-1],  4))
     print('- Sat velocity (for last constellation) [deg/s]', round(veli[-1,-1],4))
     print(f'- Diffuse mag [mag/sq/arcsec]: {-2.5*np.log10(fluxSatTotal[-1,-1]):.2f}' )
-
-# output file
-outfileroot  = f'{myargs.code}_{myargs.constellations}_'
-outfileroot += f'{myargs.mode}_{int(myTel.lat):02d}_{int(-sunElev):02d}'
 
 # sat count for almucantars
 elLim = [60.,30.,20., 10.,0.]
@@ -329,8 +345,12 @@ else: # other specific (including EFFECT)
     #print("density: other, specific instrument")
     dens    =  ds* myTel.fovl*myTel.fovw + dv * myTel.fovl * myTel.expt
              # trailf already accounted for in ds and dv
-     
-    ldens   = np.nan_to_num(np.log10(dens ), neginf=np.log10( np.min( dens[ dens > 0] )))
+    if len( dens[ dens > 0]  ) > 0:
+        #ldens   = np.nan_to_num(np.log10(dens ), neginf=np.log10( np.min( dens[ dens > 0] )))
+        ldens   = np.nan_to_num(np.log10(dens ), neginf=-999. )
+    else:
+        ldens   = dens*0 - 1000
+
     densobs = densSatObs * myTel.fovl*myTel.fovw +  densVelObs* myTel.fovl *myTel.expt
                      # number of observable trails
 
@@ -367,6 +387,7 @@ else: # other specific (including EFFECT)
         densl = "Number of trails per exp."
 
 
+
 #-- plot
 
 if not myargs.plotflag:
@@ -376,7 +397,9 @@ if not myargs.plotflag:
 else:
     fig = plt.figure(figsize=(8,8))
     ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
-    _ = cp.initPolPlot(ax)
+    cp.initPolPlot(ax)
+    ax.set_facecolor("k")
+
     
     clab = 'k'
     ccon = 'k'
@@ -384,21 +407,28 @@ else:
 
 
     #ldens stat
-    lvmax = np.max( ldens ) # np.percentile( ldens, 95.)
-    lvmin = np.min(ldens) # np.percentile( ldens, 5.)
+    if myargs.minmax is not None:
+        print(myargs.minmax)
+        lvmin = np.log10(float(myargs.minmax[0]))
+        lvmax = np.log10(float(myargs.minmax[1]))
+    else:
+        lvmax = np.max( ldens ) # np.percentile( ldens, 95.)
+        lvmin = np.min(ldens) # np.percentile( ldens, 5.)
 
-    #print(f'log min max {lvmin} {lvmax}')
-    
-    ldens[ ldens > lvmax  ] = lvmax
-    ldens[ ldens < lvmin  ] = lvmin
+    if lvmax > lvmin:
+        #print(f'log min max {lvmin} {lvmax}')
 
-    cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1], ldens , 
+        ldens[ ldens > lvmax  ] = lvmax
+        ldens[ ldens < lvmin  ] = lvmin
+
+        cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1], ldens , 
                       levels=np.linspace(lvmin,lvmax,100),  # NUMBER OF LEVELS
                       vmin=lvmin, vmax=lvmax ,
                       extend='both',
                       cmap=cmap)
-    cfd.cmap.set_under('k') # below minimum -> black
-
+        cfd.cmap.set_under('k') # below minimum -> black
+    else:
+        myargs.scalebarflag = False
 
 #----------------------------------------------------------------------
 #Scalebar
@@ -522,7 +552,10 @@ if myargs.labelplotflag:
         y -= dy
 
 
-        cp.azlab(ax,x,y,'Exp.t: {:.0f}s'.format(myTel.expt))
+        if myTel.expt > 1.:
+            cp.azlab(ax,x,y,'Exp.t: {:.0f}s'.format(myTel.expt))
+        else:   
+            cp.azlab(ax,x,y,'Exp.t: {:.0g}s'.format(myTel.expt))
         y -= dy
         
 
@@ -591,19 +624,18 @@ if myargs.labelplotflag:
 
 
     
-
+# sat count on almucantars
 if myargs.almucantar and myargs.plotflag:
-    # sat count on almucantars
     for we, wi in zip(elLim, elCount):
         cp.azlab(ax,-0,(90.-we-5)/90.,'{:.0f} sat.>{:.0f}$^o$:'.format(wi,we),9,0.5*(1.-we/100.))
 
 
-
-if 1:
+# Discrete satellite distribution
+if 0:
     Sv = satDots.makeConstellationStatTable(CONSTELLATIONS, 
                                             sunAlpha, sunDelta, 
                                             myTel.lat, 
-                                            (180+sunAlpha)*3600.)
+                                            (180+sunAlpha)*360.) ## slowed 10x
 
 
     if myargs.mode == "ALL":
