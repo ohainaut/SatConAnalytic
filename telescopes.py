@@ -24,7 +24,7 @@ def readTelescopeFile(myFile):
 
 
 class Telescope():
-    '''define a single shell'''
+    '''define a single telescope'''
     def __init__(self, oneTelJS) -> None:
         for x in list(oneTelJS):
             self.__dict__[x] = oneTelJS[x]
@@ -76,7 +76,7 @@ class Telescope():
         
         self.trail_arcsec = 3600.*self.fovl*self.trailf
     
-        self.ToC = f'{self.code}: \t{self.telescope} {self.instrument}'
+        self.ToC = f'{self.code}: \t{self.telescope} + {self.instrument}'
 
     def __repr__(self) -> str:
         msg  = f'{self.code}:  '
@@ -121,4 +121,4 @@ def readTelescopes( file='telescopes.json'):
 if __name__ == "__main__":
      mytel = readTelescopes()
      for t in mytel.list:
-          print( mytel.byCode[t].ToC )
+          print( mytel.byCode[t] )

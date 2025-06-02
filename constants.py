@@ -6,9 +6,9 @@
 '''
 
 
-#magSun = -26.75  # V magnitude of the Sun
-#magSky = 21.7    # V magnitude of the sky, mag/sq.arcsec, patat08
-#au = 149597870.7 # Astronomical unit in km
+magSun = -26.75  # V magnitude of the Sun
+magSky = 21.7    # V magnitude of the sky, mag/sq.arcsec, patat08
+au_m   = 149597870700. # Astronomical unit in km
 
 G             = 6.67430E-11 # Universal Gravity constant
 gravityMu     = 398600.5  # Earth gravitation constant [km^3 / s^2]

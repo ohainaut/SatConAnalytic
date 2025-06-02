@@ -21,19 +21,20 @@ import constants as cst
 log = logging.getLogger('conan')
 log.debug('Constell')
 
+#----------------------------------------------------------------------------
 class _Dict(dict):
     '''convenience: access dict as dict.element.element'''
     __getattr__= dict.__getitem__
     __setattr__= dict.__setitem__
     __delattr__= dict.__delitem__
 
+#----------------------------------------------------------------------------
 def readConstellationFile(myFile):
      '''read constellation json file'''
      with open(myFile) as infile:
           return json.load(infile, object_hook=_Dict)
 
-
-
+#----------------------------------------------------------------------------
 class OneShell():
      '''define a single shell'''
      def __init__(self, oneShellJS) -> None:
@@ -86,6 +87,7 @@ class OneShell():
           log.debug(f'Shell table: {len(self.Table)} - {self.nSat} * {self.nPlane} = {self.nSat * self.nPlane} =?= {self.totSat}')
           return self.Table
 
+#----------------------------------------------------------------------------
 class Constellation():
      '''define a single constellation
 
@@ -102,7 +104,8 @@ class Constellation():
 
           self.totSat =  sum( s.totSat for s in self.shells)
           self.totShells = len( self.shells )
-          self.ToC = f'"{self.name}"\t {self.totSat} sat, {self.totShells} shells'
+          self.ToC = (f'\n-----------------------------------------------------------'+
+                      f'\n"{self.name}"\t {self.totSat} sat, {self.totShells} shells')
 
           self.vintageTable = [[
                          s.label,
@@ -121,16 +124,19 @@ class Constellation():
                msg += f'\ta= {s.alt}km \ti= {s.inc}deg'
           return msg
 
+#----------------------------------------------------------------------------
 class Constellations():
      '''define a metaConstellation, list of constellations
      Produced either from
      - an input file or
      - a list of Constellation objects
      '''
+
      def __init__(self,constJS):
           '''constJS is either a list of
           - JS definitions of Constellations, or
           - Constellation objets'''
+
           self.list = [c.code  for c in constJS]
           self.name = ", ".join(self.list)
           self.byCode      = _Dict( { })
@@ -161,20 +167,17 @@ class Constellations():
 
 
      def __repr__(self):
-          msg = "List of constellations:\n"
-          msg +=  '\n'.join( [ f'{c} :\t {self.byCode[c]} ' for c in self.list ])
-          msg += f'\nTotal N={self.totSat} satellites'
-          msg += f'\nover  S={self.totShells} shells'
-          msg += f'\nin    C={self.totConst} Constellations'
-          return msg
+          return self.ToC
 
 
 
+#----------------------------------------------------------------------------
 def readConstellations( file='constellations.json'):
      '''Reads a constellation json file into a Constellations object'''
      allConst = readConstellationFile(file)
-     return  Constellations( allConst)
+     return   Constellations( allConst)
 
+#----------------------------------------------------------------------------
 def metaConstellation( cList, myConst=readConstellations() ):
      try:
           return Constellations( [ myConst.byCode[c] for c in cList])
@@ -185,4 +188,4 @@ def metaConstellation( cList, myConst=readConstellations() ):
           raise ValueError(cError)
 
 if __name__ == "__main__":
-     print( readConstellations().byCode )
+     print( readConstellations()  )

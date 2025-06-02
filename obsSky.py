@@ -22,8 +22,6 @@ matplotlib.use('Agg')  # to avoid Xdisplay issues in remote
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
-import sys
-import os
 #sys.path.append(os.path.dirname(__file__)+"/../")
 
 print('conAn ObsSky')
@@ -37,6 +35,9 @@ import conan as ca
 import conanplot as cp
 import constants as cst
 import satDots
+
+
+
 
 #----- config
 step = 0.75 #deg >~1. Smaller values take forever
@@ -84,12 +85,13 @@ parser.add_argument('-T','--code',
                          telescope, instrument, resolution, latitude. 
                          Use individual options to overwrite presets.
                          SPECIAL CODES: SatDens for satellite density; 
-                         TrailDens for trail density;
+                         TrailogDensity for trail density;
                          skyMag for sky surface brightness [mag];
                          skyFrac for sky surface brightness as a fraction.
 ''')
-parser.add_argument('-M','--mode', default="OBS",
-                    help="Plot: ALL (Default), OBS, BRIGHT, FAINT, or EFFECT")
+parser.add_argument('-M','--magSelect', default="OBS", 
+                    choices=['ALL', 'OBS', 'BRIGHT', 'FAINT', 'EFFECT'],
+                    help="selection on magnitude; default=OBServable")
 
 parser.add_argument('--minmax', nargs=2, 
                     help="min, max value for the colorscale")
@@ -106,12 +108,37 @@ parser.add_argument('--noalmuc', action='store_false',
                     help="Plot: Don't write sat count on the almucantars")
 parser.add_argument('--nolabel', action='store_false',
                     help="Plot: Don't label the plot")
+parser.add_argument('--noDots', action='store_false',
+                    help="Plot: Don't plot the satellite dots")
 parser.add_argument('--pdf', action='store_true',
                     help="Plot: output file in pdf (default is png)")
 myargs = parser.parse_args()
 
 
-print('TELESCOPE/INSTRUMENT SETUP')
+
+# flags
+myargs.plotflag      = myargs.noplot
+myargs.shadeflag     = myargs.noshade
+myargs.scalebarflag  = myargs.noscalebar
+myargs.labelplotflag = myargs.nolabel
+myargs.almucantar    = myargs.noalmuc
+if myargs.pdf :
+    myargs.outputformat = ".pdf"
+else:
+    myargs.outputformat = ".png"
+    
+
+# hack for skyFlux
+if myargs.code == "skyFlux":
+    myargs.code = "skyMag"
+    skyFluxFlag = True
+else:
+    skyFluxFlag = False
+
+#
+# OBSERVATORY TELESCOPE INSTRUMENT
+#
+print('=====TELESCOPE/INSTRUMENT SETUP=======================================')
 myTel = cp.getTelescope(myargs)
 print(myTel)
 
@@ -134,57 +161,46 @@ print(f'\tLocal time: {((180+sunAlpha)/15.)%24:.2f}h')
 print(f'\tHA = {sunAlpha:.1f}deg  = {(sunAlpha/15.)%24:.2f}h, Dec = {sunDelta:.1f}d')
 print(f'\tElevation: {sunElev:.2f}d')
     
-
-wAz, wEl = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
-print(f'Validation: az= {wAz:.2f}, el= {wEl:.2f}d\n')
-
+sunAz,sunEl = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
+print(f'Validation: az= {sunAz:.2f}, el= {sunEl:.2f}d\n')
 
 
-
-
-# flags
-myargs.plotflag      = myargs.noplot
-myargs.shadeflag     = myargs.noshade
-myargs.scalebarflag  = myargs.noscalebar
-myargs.labelplotflag = myargs.nolabel
-myargs.almucantar    = myargs.noalmuc
-if myargs.pdf :
-    myargs.outputformat = ".pdf"
-else:
-    myargs.outputformat = ".png"
-    
 
 
 
 # output file
 outfileroot  = f'{myargs.code}_{myargs.constellations}_'
-outfileroot += f'{myargs.mode}_{int(myTel.lat):02d}_{int(sunAlpha):02d}'
+outfileroot += f'{myargs.magSelect}_{int(myTel.lat):02d}_{int(sunAlpha):02d}'
 
-
-    
-######################################################################
+#==============================================================================
+#==============================================================================
+#==============================================================================
+#==============================================================================
+#
 #---  COMPUTE CONSTELLATIONS
+#
 
-
-# expand the constellation id into a list of real constellations
+# expand the constellation Id into a list of real constellations
 CONSTELLATIONS = ca.findConstellations(myargs.constellations)
-print('CONSTELLATIONS:')
+print('=====CONSTELLATIONS===================================================')
 print( CONSTELLATIONS.ToC )
 print()
 
 
 
 
-#fill ElAz:
-AzEl = ca.fillAzEl(step)
+# Azimuth-Elevation mesh:
+AzEl = ca.fillAzEl(step)               # mesh of Azimut-Elevation
 
-densSatAll = np.zeros_like(AzEl[0])
-densVelAll = np.zeros_like(AzEl[0])
-densSatObs = np.zeros_like(AzEl[0])
-densVelObs = np.zeros_like(AzEl[0])
-densSatBloom = np.zeros_like(AzEl[0])
-densVelBloom = np.zeros_like(AzEl[0])
-fluxSatTotal = np.zeros_like(AzEl[0])
+# Arrays with the various results; same array geometry as AzEl 
+densSatAll = np.zeros_like(AzEl[0])    # density of satellites     (all sat)
+densVelAll = np.zeros_like(AzEl[0])    # density of satVelocities (all sat)
+densSatObs = np.zeros_like(AzEl[0])    # density of Observable satellites (brighter than limiting mag)
+densVelObs = np.zeros_like(AzEl[0])    #                       satVel
+densSatBloom = np.zeros_like(AzEl[0])  # density of blooming satellites  (brighter than bloom limit)
+densVelBloom = np.zeros_like(AzEl[0])  #                     satVel
+
+fluxSatTotal = np.zeros_like(AzEl[0])  # total flux (for all sat)  
 
 magmax = -99.
 magmin = 99.
@@ -192,6 +208,7 @@ mageffmax = -99
 mageffmin = 99.
 
 
+# Scan the constellation shells
 for myShell in CONSTELLATIONS.shells:                 
     # model the shell
     densSi, veli, magi =  ca.modelOneConstMag(AzEl,myTel.lat, sunAlpha,sunDelta,
@@ -210,9 +227,10 @@ for myShell in CONSTELLATIONS.shells:
 
     # effective magnitude and extremes
     # does the satellite trail more than 1 resolution element during expT:
-    trailing =  veli*myTel.expt >= myTel.resol
-    mageffi = magi*1.
-    mageffi[trailing] = magi[trailing]   - 2.5*np.log10(myTel.resol/veli[trailing] /myTel.expt)
+    trailing =  veli*myTel.expt >= myTel.resol  # bolean for non-zero trailing
+    mageffi = magi*1.  # init effective mag for non-trailing
+    mageffi[trailing] = magi[trailing]   - 2.5*np.log10(myTel.resol/ (veli[trailing]*myTel.expt)  )
+                       # correct for trailing sat
     mageffmax = max(mageffmax,np.amax(mageffi))
     mageffmin = min(mageffmin,np.amin(mageffi))
 
@@ -253,6 +271,8 @@ if myargs.plotflag:
 # sat count for almucantars
 elLim = [60.,30.,20., 10.,0.]
 elCount = ca.integrateSat(elLim,AzEl,densSatAll)
+         # elCount: number of sat higher than elLim
+
 
 outfile = open(outpath+outfileroot+'.txt','w+')  # store the hist.
 outstring =  ('{:6.3f} {:5.1f} '+' {:4.0f}'*16).format(
@@ -267,94 +287,184 @@ outstring =  ('{:6.3f} {:5.1f} '+' {:4.0f}'*16).format(
     0.,0.,0.,0.)
 #will be written to file later
 
-
 #==============================================================================
+#==============================================================================
+#==============================================================================
+#==============================================================================
+#
+# PREPARE THE PLOT
+#
 
-if myargs.mode == 'BRIGHT':
+# select effective densities
+if  myargs.magSelect == 'BRIGHT':
     ds = densSatBloom
     dv = densVelBloom
-    labelmag = True              
 
-elif myargs.mode == 'OBS':
+    selectionLab = f'Selection: mag < {myTel.magbloom:.1f}'
+
+elif myargs.magSelect == 'OBS':
     ds = densSatObs
     dv = densVelObs
-    labelmag = True              
+    selectionLab = f'Selection: mag$_{{eff}}$ < {myTel.maglim:.1f}'
 
-elif myargs.mode == 'FAINT':
+elif myargs.magSelect == 'FAINT':
     ds = densSatAll - densSatBloom
     dv = densVelAll - densVelBloom    
-    labelmag = True              
-
-elif myargs.mode == 'ALL':
+    selectionLab = f'Selection: mag > {myTel.magbloom:.1f}'
+    
+elif myargs.magSelect == 'ALL':
     ds = densSatAll
     dv = densVelAll
 
-elif myargs.mode == 'EFFECT':
+elif myargs.magSelect == 'EFFECT':
     ds = myTel.trailf * densSatObs + (1.-myTel.trailf)* densSatBloom
     dv = myTel.trailf * densVelObs + (1.-myTel.trailf)* densVelBloom
-    labelmag = True
-    
+    selectionLab  = 'Selection: all satellites, scaled for effect. '
+    selectionLab += f'Detected: V$_{{eff}}$ < {myTel.maglim:.1f} '
+    selectionLab += f'Bleeding: V$_{{eff}}$ < {myTel.magbloom:.1f}'
+
+
 else:
-    print("valid for -M: BRIGHT OBS FAINT ALL EFFECT")
+    print(f'invalid mode {myargs.magSelect}')
     exit(1)
     
-#==============================================================================
 # colormap
+
 cmap = "magma"
-
-# set limits for the colormap
-
-lvmin = -2.5
-lvmax = np.log10(30)##< MAXIMUM STANDARD
-#lvmax = np.log10(5000)#
-
-
 print ("telinslabel",myargs.code)
-if myargs.code == "TrailDens":
-    ldens = np.log10( dv )
-    densl = "Number of trails./deg/sec."
+
+# select what to plot and  limits for the colormap
+
+#---
+def getBarLim(logDensity):
+    '''
+    Top and bottom of the bar for logDensity as a standard log
+
+    logMinValue < logMaxValue, ALWAYS
+    If reverse scale is needed, 
+    '''
+
+    if myargs.minmax is not None:
+        print(myargs.minmax)
+        logMinValue = np.log10(float(myargs.minmax[0]))
+        logMaxValue = np.log10(float(myargs.minmax[1]))
+        print('LV from params:', logMinValue, logMaxValue)
+    else:
+        if len(logDensity[logDensity > -998] ) == 0:
+            #empty sky
+            logMinValue = -4.
+            logMaxValue =  .9
+        else:
+            logMinValue = np.percentile( logDensity[logDensity > -998], 1.)
+            logMaxValue = np.percentile( logDensity[logDensity > -998], 99.)
+        print('LV from data', logMinValue, logMaxValue)
+
+    return logMinValue, logMaxValue
+
+
+def setBarLim_standardLog(logDensity):
+    '''prepare Bar limits, ticks and labels for a standard logDensity'''
+    logMinValue, logMaxValue = getBarLim(logDensity)
+    bMin = int(logMinValue)
+    bMax = int(logMaxValue +.001)
+    barTicks = np.arange(bMin, bMax , .333333)
+    barTicks = barTicks[ barTicks >= logMinValue -.35 ]
+    barTicks = barTicks[ barTicks <= logMaxValue +.35 ]
+    barTickLabels = [ f'{x:.1g}' for x in 10.**barTicks]
+
+    return barTicks, barTickLabels, logMinValue, logMaxValue
+
+
+def setBarLim_negMag(logDensity):
+    '''prepare Bar limits, ticks and labels for a mag plot
+    The "logDensity" is -mag'''
+
+    logMinValue, logMaxValue = getBarLim(logDensity)
+    bMin = int(logMinValue*3.)/3. 
+    bMax = int(logMaxValue*3. -1)/3.
+    barTicks = np.arange(bMin, bMax , .333333)
+    #barTicks = barTicks[ barTicks >= logMinValue -.35 ]
+    #barTicks = barTicks[ barTicks <= logMaxValue +.35 ]
+    barTickLabels = [ f'{x:.1f}' for x in -barTicks]
+
+    return barTicks, barTickLabels, logMinValue, logMaxValue
+
+#----
+
+
+if myargs.code == "TrailogDensity":
+    barLabel = "Number of trails./deg/sec."
+
+    logDensity = np.log10( dv )
+    barTicks, barTickLabels, logMinValue, logMaxValue = setBarLim_standardLog(logDensity)
     print("Tdensity")
 
 elif myargs.code == "SatDens":
-    ldens = np.log10( ds )
-    densl = "Number of sat./sq.deg."
+    barLabel = "Number of sat./sq.deg."
+
+    logDensity = np.log10( ds )
+    barTicks, barTickLabels, logMinValue, logMaxValue = setBarLim_standardLog(logDensity)
     print("Sdensity")
 
 elif myargs.code == "skyMag":
-    ldens =  2.5* np.log10( fluxSatTotal )
-    skybrightmag = False
-    lvmin = -30.0
-    lvmax = -26.25  ## np.amax(ldens) + 0.5
-    lvmax = -24.25  ## np.amax(ldens) + 0.5
-    labelmag = True
+    if skyFluxFlag:
+        barLabel = r'Surface brightness [$\mu$cd/m$^2$]' # raw string for LaTeX
+    
+        logDensity =  2.5* np.log10( fluxSatTotal ) # = -1*mag
+            # we plot -mag, then we change the scale of the bar
+        logMinValue, logMaxValue = getBarLim(logDensity)
+        bMin = int(logMinValue*3.)/3. 
+        bMax = int(logMaxValue*3. -1)/3.
+        barTicks = np.arange(bMin, bMax , .333333)
+        muCd = 12e10 * 10**(0.4*barTicks) # conversion to microCandela/m2
+        barTickLabels = [ f'{x:.1g}' for x in muCd]
+        print("skyFlux")
+
+    else:
+        barLabel = "Surface brightness [mag/sq.arcsec]"
+
+        logDensity =  2.5* np.log10( fluxSatTotal ) # = -1*mag
+        barTicks, barTickLabels, logMinValue, logMaxValue = setBarLim_negMag(logDensity)
+    
+        #logMinValue, logMaxValue = -30., -20.
+        #barTicks      = np.arange(logMinValue, logMaxValue,.5)
+        #barTickLabels = [ f'{x:.1f}' for x in -barTicks]
+        print("skyMag")
+
+
 
 elif myargs.code == "skyFrac":  # fraction of the sky surfbrightness
-    skymag0 = 21.78 + 5 # dark sky, mag/arcsec2, +5 for %
-    skymag = skymag0 
-    #skymag = 21.00 +5  #  mag/arcsec2    -15deg tw
-    #skymag = 19.80 +5  #  mag/arcsec2    -12deg tw
-    #skymag = 9.0 +5   #  mag/arcsec2    -9deg tw
-    ldens =  2.5* np.log10( fluxSatTotal ) + skymag
-    print("pseudomag", np.amax(ldens), np.amin(ldens))
-    lvmin = -30.0  + skymag0
-    lvmax = -26.25 + skymag0
-    labelmag = True
+    skymag = 22. 
+    barLabel = f'Surface brightness [fraction of sky] ($m_{{sky}} = ${skymag:.2f})'
+    
+    logDensity =  2.5* np.log10( fluxSatTotal ) + skymag
+    #+ 5 # +5 for [%]
+
+    logMinValue, logMaxValue = getBarLim(logDensity)
+    bMin = int(logMinValue*3.)/3. 
+    bMax = int(logMaxValue*3. -1)/3.
+    barTicks = np.arange(bMin, bMax , .333333)
+    barTickLabels = [ f'{x:.1g}' for x in 10.**barTicks]
+    print("skyFrac")
+
+
 
 
 else: # other specific (including EFFECT)
-    #print("density: other, specific instrument")
+
     dens    =  ds* myTel.fovl*myTel.fovw + dv * myTel.fovl * myTel.expt
              # trailf already accounted for in ds and dv
+
+    # deal with empty sky
     if len( dens[ dens > 0]  ) > 0:
-        #ldens   = np.nan_to_num(np.log10(dens ), neginf=np.log10( np.min( dens[ dens > 0] )))
-        ldens   = np.nan_to_num(np.log10(dens ), neginf=-999. )
+        logDensity   = np.nan_to_num(np.log10(dens ), neginf=-999. )
     else:
-        ldens   = dens*0 - 1000
+        logDensity   = dens*0 - 1000.
 
     densobs = densSatObs * myTel.fovl*myTel.fovw +  densVelObs* myTel.fovl *myTel.expt
                      # number of observable trails
 
-    
+
     # compute average effect:
     EffTot = 0.
     TrailTot = 0.
@@ -369,26 +479,40 @@ else: # other specific (including EFFECT)
     EffTot   = EffTot  /icount
     TrailTot = TrailTot/icount
 
-
     print(f'Effect on exposures (at Zenith): Loss fraction: {dens[-1,-1]:.3g}/1.; Trails: {densobs[-1,-1]:.3g}/exp')
     print(f'Effect on exp. (aver above {aircut}): Loss fraction: {EffTot:.3g}/1.; Trails: {TrailTot:.3g}/exp')
 
-    outstring += " {} {}".format(EffTot,TrailTot)
+
+    outstring += f' {EffTot} {TrailTot}'
 
     
-    if myargs.mode == 'EFFECT':
+    if myargs.magSelect == 'EFFECT':
         #print("Effect")
-        densl = "Fraction lost"
+        barLabel = "Fraction lost"
         cmap = gyrd    
-        lvmin = -3.5  # log limits for the colour scale
-        lvmax = 0.2  # 2.2
-        labelmag = True
+        
+        logMinValue = -3.5  # log limits for the colour scale
+        logMaxValue = 0.5  # 2.2
+        bMin = int(logMinValue*3.)/3. 
+        bMax = int(logMaxValue*3. -1)/3.
+        barTicks = np.arange(bMin, bMax , .333333)
+        barTickLabels = [ f'{x:.1g}' for x in 10.**barTicks]
+
+
+
+
     else:
-        densl = "Number of trails per exp."
+        barTicks, barTickLabels, logMinValue, logMaxValue = setBarLim_standardLog(logDensity)
+
+        print('HEREl', logMinValue, logMaxValue)
+        print('HEREb', barTicks, barTickLabels)
+        barLabel = "Number of trails per exp."
 
 
 
-#-- plot
+#
+# PLOT
+#
 
 if not myargs.plotflag:
     myargs.labelplotflag  = False
@@ -399,83 +523,30 @@ else:
     ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
     cp.initPolPlot(ax)
     ax.set_facecolor("k")
-
     
     clab = 'k'
     ccon = 'k'
     tickformat = "{:.1f}".format
 
-
-    #ldens stat
-    if myargs.minmax is not None:
-        print(myargs.minmax)
-        lvmin = np.log10(float(myargs.minmax[0]))
-        lvmax = np.log10(float(myargs.minmax[1]))
-    else:
-        lvmax = np.max( ldens ) # np.percentile( ldens, 95.)
-        lvmin = np.min(ldens) # np.percentile( ldens, 5.)
-
-    if lvmax > lvmin:
-        #print(f'log min max {lvmin} {lvmax}')
-
-        ldens[ ldens > lvmax  ] = lvmax
-        ldens[ ldens < lvmin  ] = lvmin
-
-        cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1], ldens , 
-                      levels=np.linspace(lvmin,lvmax,100),  # NUMBER OF LEVELS
-                      vmin=lvmin, vmax=lvmax ,
+    #    logDensity[ logDensity > logMaxValue  ] = logMaxValue
+    #    logDensity[ logDensity < logMinValue  ] = logMinValue
+ 
+    cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1], logDensity , 
+                      levels=np.linspace(logMinValue,logMaxValue,100),  # NUMBER OF LEVELS
+                      vmin=logMinValue, vmax=logMaxValue ,
                       extend='both',
                       cmap=cmap)
-        cfd.cmap.set_under('k') # below minimum -> black
-    else:
-        myargs.scalebarflag = False
+    cfd.cmap.set_under('k') # below minimum -> black
+
+
 
 #----------------------------------------------------------------------
 #Scalebar
 if myargs.scalebarflag:
     cbar = fig.colorbar(cfd)
-    if myargs.code == "skyMag":
-        # (the plot contains -mag) 
-        barmag = np.arange(-30,-23,.5)
-        if skybrightmag:
-            cbar.set_ticklabels( [ "{:.1f}".format(x) for x in -cbar.get_ticks()])
-            densl = "Surface brightness [mag/sq.arcsec]"
-
-        else:
-            if 0:
-                # mucd/m2
-                barlum = 12e10 * 10**(0.4*barmag)   ## CONVERSION mag->mucd
-                cbar.set_ticks(barmag)
-                cbar.set_ticklabels( [ "{:.1g}".format(x) for x in barlum])
-                densl = "Surface brightness [$\mu$cd/m$^2$]"
-
-            else:
-                # dark sky:
-                barlum = 12e10 * 10**(0.4*barmag)/2.20   ## sky=220; pc= 1/100
-                cbar.set_ticks(barmag)
-                cbar.set_ticklabels( [ "{:.1g}".format(x) for x in barlum])
-                densl = "Surface brightness [ % of sky]"
-
-            
-    elif myargs.code == "skyFrac":
-        barmag = np.arange(-30,-25,.5) + skymag0 # skymag comes with +5mag for %
-        barlum = 10**(0.4*barmag) 
-        cbar.set_ticks(barmag)
-        cbar.set_ticklabels( [ "{:.1g}".format(x) for x in barlum])
-        densl = "Surface brightness [ % of sky] ($m_{sky} = $"+"{:.2f}".format(skymag-5)+")]"
-
-    else:
-        myticks = np.log10(np.array([0.00002,0.00005,0.0001,0.0002,0.0005,0.001,0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.,2.,5.,10.,20.,50.,100.,200.,500., 1000., 2000.,5000.,]))
-        myticks = myticks[ myticks >= lvmin -.35 ]
-        myticks = myticks[ myticks <= lvmax +.35 ]
-        cbar.set_ticks(myticks)
-        cbar.set_ticklabels( [ "{:5.2g}".format(x) for x in 10.**myticks])
-
-        #        cbar.set_ticks(np.log10(np.array([0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.,2.,5.,10.,20.,50.])))
-        #cbar.set_ticklabels( [ "{:5.2g}".format(x) for x in 10.**cbar.get_ticks()])
-
-
-    cbar.set_label(densl)
+    cbar.set_ticks( barTicks )
+    cbar.set_ticklabels( barTickLabels)
+    cbar.set_label(barLabel)
 
 
 #----------------------------------------------------------------------
@@ -505,23 +576,20 @@ if myargs.shadeflag:
 
 
 #------------------------------------------------------------------------------
-# RA Dec lines
+# Draw RA,Dec lines
 cp.drawHADec(myTel.lat)
 
 
 #----------------------------------------------------------
-#labels
-
-
+#All the labels
 
 if myargs.labelplotflag:
 
-    #Sun
-    azs,els = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
-    plt.text(np.radians(azs), 93.,"$\odot$", va="center", ha='center')
+    #Sun symbol on horizon
+    plt.text(np.radians(sunAz), 93.,r'$\odot$', va="center", ha='center') # raw string for LaTeX
     
 
-    #top left
+    #top left corner
     x = -1.
     y = 1.2
     dy = 0.08
@@ -530,7 +598,7 @@ if myargs.labelplotflag:
     y -= dy
     
     
-    if myargs.code != "SatDens" and myargs.code != "TrailDens" and myargs.code != "skyMag":
+    if myargs.code != "SatDens" and myargs.code != "TrailogDensity" and myargs.code != "skyMag":
         cp.azlab(ax,x,y,'Instrument: {}'.format(myTel.instrument))
         y -= dy
 
@@ -563,7 +631,7 @@ if myargs.labelplotflag:
     # bottom left
     x= -1.
     y= -1.08
-    cp.azlab(ax,x,y,'$\odot$ Sun:',14)
+    cp.azlab(ax,x,y,r'$\odot$ Sun:',14)
 
     y -= dy
     loct = (sunAlpha/15.+12.)%24
@@ -572,7 +640,7 @@ if myargs.labelplotflag:
     locm = int( (loct-loch)*60.)
     cp.azlab(ax,x,y,f'Loc.time: {loch:02d}:{locm:02d}')
     y -= dy
-    cp.azlab(ax,x,y,f'$\delta: {sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
+    cp.azlab(ax,x,y,r'$\delta: '+f'{sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
     y -= dy
 
 
@@ -608,14 +676,14 @@ if myargs.labelplotflag:
     cp.azlab(ax,x,y,lab)
     y -= dy
 
-    if myargs.mode == "BRIGHT":
-        cp.azlab(ax,x,y,"Selection: mag < {:.0f}".format(myTel.magbloom))
-    elif myargs.mode == "OBS":
+    if myargs.magSelect == "BRIGHT":
+        cp.azlab(ax,x,y,selectionLab)
+    elif myargs.magSelect == "OBS":
         wlab = "Selection: mag$_{eff}$ < "+"{:.1f}".format(myTel.maglim)
         cp.azlab(ax,x,y,wlab)
-    elif myargs.mode == "FAINT":
+    elif myargs.magSelect == "FAINT":
         cp.azlab(ax,x,y,"Selection: mag > {:.0f}".format(myTel.magbloom))
-    elif myargs.mode == "EFFECT":
+    elif myargs.magSelect == "EFFECT":
         cp.azlab(ax,x,y,"Selection: all satellites, scaled for effect")
         wlab = "Detected: V$_{eff}$ < "+"{:.1f} ".format(myTel.maglim)
         wlab += "   Bleeding: V$_{eff}$ < "+"{:.1f}".format(myTel.magbloom)
@@ -630,29 +698,34 @@ if myargs.almucantar and myargs.plotflag:
         cp.azlab(ax,-0,(90.-we-5)/90.,'{:.0f} sat.>{:.0f}$^o$:'.format(wi,we),9,0.5*(1.-we/100.))
 
 
-# Discrete satellite distribution
-if 0:
+# Discrete satellites as dots on the plot
+if myargs.noDots:
+    print("==DOTS==")
     Sv = satDots.makeConstellationStatTable(CONSTELLATIONS, 
                                             sunAlpha, sunDelta, 
                                             myTel.lat, 
                                             (180+sunAlpha)*360.) ## slowed 10x
+    if myargs.magSelect == "EFFECT":
+        myargs.magSelect = "ALL"
 
-
-    if myargs.mode == "ALL":
+    if myargs.magSelect == "ALL":
+        # not illuminated in grey
         Si = Sv[  ~Sv["bIlluminated"] ]
         ax.scatter(Si["Azr"],Si["ZD"], s=Si["dot"], c="grey", alpha=0.2)
 
     Si = Sv[  Sv["bIlluminated"] ]
-    if myargs.mode in ["ALL",  "OBS"] :
+    if myargs.magSelect in ["ALL",  "OBS"] :
+        # not bright in yellow
         Sb = Si[ Si["mag"] >= 7 ]
         ax.scatter(Si["Azr"],Si["ZD"], s=Si["dot"], c="yellow")
 
-    if myargs.mode in ["ALL", "OBS","BRIGHT"] :
+
+    if myargs.magSelect in ["ALL", "OBS","BRIGHT"] :
+        # bright in red
         Sb = Si[ Si["mag"] < 7 ]
         ax.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], c="red")
 
 
-    ###satDots.plot_legendMag()
 
 
 print('finishing...')
@@ -661,8 +734,6 @@ outstring += '\n'
 outfile.write(outstring)
 outfile.close()
         
-
-
 
 # save plot
 if myargs.plotflag:

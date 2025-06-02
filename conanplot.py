@@ -12,9 +12,9 @@ import conan as ca
 import telescopes
 
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
-colors = ["black", "lawngreen", "yellow", "orange", "red", "darkred"]
 
 # color map for losses
+colors = ["black", "lawngreen", "yellow", "orange", "red", "darkred"]
 gyrd = LinearSegmentedColormap.from_list("mycmap", colors)
 
 # colors for airmass
