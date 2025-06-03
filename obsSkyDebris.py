@@ -29,7 +29,7 @@ import debris
 
 
 #----- config
-step = 1. #deg >~1. Smaller values take forever
+step = 1.#30. #deg >~1. Smaller values take forever
 multiplicationFactor =  1 # magic factor wrt today
 
 
@@ -161,6 +161,7 @@ fluxDebris = np.zeros(   (AzEl.shape[1],AzEl.shape[2]) )
 for i in  np.arange(len(DEBRIS) -1):
     # restrict to requested altitude range
     if DEBRIS['alt'][i] >= altmin and DEBRIS['alt'][i] <= altmax:
+        print(i, DEBRIS["alt"][i])
         # model the shell, and summ the contribution
         fluxDebris +=  np.reshape(debris.modelOneConstMag(AzElreshape,myTel.lat, sunAlpha,sunDelta,
                                     DEBRIS['alt'][i],
@@ -209,7 +210,7 @@ elif myargs.mode == "debrisMag":
         return f"{x:.1f}"
     
 elif myargs.mode == "totalMag":
-    plotit = -magDebris
+    plotit = -magTotal
     vmin = np.amin( plotit[plotit > -990] )
     vmax = np.amax( plotit[plotit > -990] )
     vsign = -1.
@@ -224,6 +225,10 @@ elif myargs.mode == "debrisFlux":
     plotit = fluxDebris
     vmin = np.amin( plotit[plotit > 0] )
     vmax = np.amax( plotit[plotit > 0] )
+    if vmin == vmax:
+        vmin *= .9
+        vmax *= 1.1
+
     vsign = 1.
     barLabel = "Debris [flux/arcsec$^2$]"
     cmap = cp.csunmap
@@ -243,6 +248,7 @@ elif myargs.mode == "ratio":
     def barFmt(x):
         return f"$10^{{{x:.0f}}}$"
 
+print("CONTOURSminmax",  vmin, vmax)
 
 cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1],
                       plotit ,

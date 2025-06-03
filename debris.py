@@ -12,7 +12,7 @@ import conan
 
 mypath = os.path.dirname(__file__)
 
-p_albedo = .2
+p_albedo = .1
 rho_density = 0.5* 1000. # km/m3
 fluxSun = 10.**(-0.4*constants.magSun)
 
@@ -64,22 +64,6 @@ def make_debrisTab(myrange=np.arange(0,7)):
 
     return Debris
 
-#----------------------------------------------------------------------
-def make_debrisDict():
-    '''Return Dict with the debris distribution'''
-
-    Debris = {}
-
-    for i in np.arange( 0, 7):
-        infile = mypath + f'/Debris/spatial_density_1e-{i}.csv'
-        T = read_oneDebris(infile)
-        Debris[i] = {"radius" : f'10^-{i}m',
-                     "unit" : '1/km^3',
-                     "dens" : np.array(T["dens"])}
-
-    Debris['alt'] = np.array(T['alt'])
-    
-    return Debris
 
 #----------------------------------------------------------------------
 def read_oneDebris(infile):
@@ -358,32 +342,50 @@ def modelOneConstMag(AzEl,obsLatitude, sunAlpha,sunDelta,
     - flux
     '''
 
-    step=1.
+    step=1. # [deg] here we will work in sq.deg
 
 
     # geocentric equ. alpha,delta of sat, and   observatory dist, angle 
     alpha, delta, Delta, costheta = conan.AltAz2Delta(obsLatitude,satAlt,AzEl)
     
-    # geocentric equ. rect. of satellite
+    # geocentric equatorial rectangular coord of satellite
     xyz = conan.RaDecAlt2xyz(alpha,delta, satAlt)
 
     # Illumination
     illum = conan.solIllum(xyz, sunAlpha, sunDelta) # 1/0 for illumination of the pixel by the sun
 
-    # area of the section of sphere in the pixel
+
+    # area [km2] of the section of sphere in the pixel
     surface =  surfaceOfSection(  step, delta, step, satAlt)
 
+    #
     # solar phase
-    sunXYZ = conan.RaDecAlt2xyz(sunAlpha,sunDelta, 1.-constants.earthRadius) #for unit vector...
-    sunXYZ[1] *= -1
-    w = sunXYZ*100
+    #
 
-    # topocentric vector to the satellite
-    topoXYZ = xyz.copy()
-    topoXYZ[0,:] -= constants.earthRadius
+    # Sun unit vector
+    #   The distance to the sun is >> than the other distances
+    #   so, sun_XYZ is also Observer-Sun and Satellite-Sun
+    sun_XYZ = conan.RaDecAlt2xyz(-sunAlpha,sunDelta, 1.-constants.earthRadius) #for unit vector...
+    #   note -sunAlpha
+
+    # Satellite-Observer vector
+    # xyz: geocentric vector to the satellite
+    # satellite-observer:
+    satObs_XYZ = -xyz
+    satObs_XYZ[0,:] += constants.earthRadius
+    # |satObs_XYZ| = |topo_XYZ| = Delta, computed above
 
     # Solar phase correction - Lambertian
-    sunPhFrac = (1.+ sunXYZ@topoXYZ / Delta )/2. # |sunXYZ|=1
+    sunPhFrac = (1.+ sun_XYZ@satObs_XYZ / Delta )/2. # |sunXYZ|=1
+
+    if 0:
+        for ii in np.arange(len(illum)):
+            print(ii, AzEl[:,ii], f' [{alpha[ii]:.2f}, {delta[ii]:.2f}] ', 
+              f'[ {xyz[0,ii]-constants.earthRadius:.0f},',
+              f'{xyz[1,ii]:.0f}, ',
+              f'{xyz[2,ii]:.0f} ],',
+               illum[ii])
+
 
     # Flux:  
     illumFlux =  surface * illum * sunPhFrac * crossSectionDensity* fluxSun / Delta**2 * 1.E-6
