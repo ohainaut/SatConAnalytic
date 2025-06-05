@@ -23,14 +23,13 @@ from conanplot import gyrd
 # import ConAn routines
 import conan as ca
 import conanplot as cp
-import constants as cst
-import satDots
+import constants
 import debris
 
 
 #----- config
 step = 1.#30. #deg >~1. Smaller values take forever
-multiplicationFactor =  1 # magic factor wrt today
+multiplicationFactor =  1000 # magic factor wrt today
 
 
 
@@ -48,32 +47,36 @@ parser.add_argument('-a','--alphaSun',
                     help="Sun: Hour Angle of the Sun [deg]. If present, overwrites elevSun")
 parser.add_argument('-e','--elevSun', default=24.,
                     help="Sun: Elevation of the Sun BELOW the horizon. Should probably be >0 in most cases [deg]")
-parser.add_argument('-M','--mode', default="ratio", choices=['totalMag', 'skyMag', 'ratio', 'debrisMag',  'debrisFlux'],
-                    help="Mode: what to plot")
 parser.add_argument('-l','--lat', default=-24.6,
                     help="Observatory: Latitude of the observatory [deg]")
 parser.add_argument('-s','--telescope',
                     help="Observatory: Name of the telescope")
 parser.add_argument('-i','--instrument',
                     help="Observatory: Name of the instrument")
-parser.add_argument('--alt', nargs=2, default=[190,1000],
+parser.add_argument('--alt', nargs=2, default=[0,2000],
                     help="min  max altitude, in km")
 parser.add_argument('--lrad', nargs=2, default=[0,6],
                     help="min max radius in -log (default: 0 6)")
-
-
+parser.add_argument('--density', default=1.,
+                    help='''Density threshold [n/sq.dg]: 
+                    particle less dense than this don\'t contribute 
+                    to the diffuse background''')
 parser.add_argument('-T','--code',
                     help='''Observatory: Predefined telescope/instrument with
                          extptime, FoVl, FoVw, maglim, magbloom, trailf,
                          telescope, instrument, resolution, latitude.
-                         Use individual options to overwrite presets.
-                         SPECIAL CODES: SatDens for satellite density;
-                         TrailDens for trail density;
-                         skyMag for sky surface brightness [mag];
-                         skyFrac for sky surface brightness as a fraction.
-''')
+                         ''')
+parser.add_argument('-M','--mode', default="ratio", 
+                    choices=['totalMag', 'skyMag', 'ratio', 
+                             'debrisMag',  'debrisFlux', 'debrisCount', 
+                             'surface'],
+                    help="Mode: what to plot")
+
 myargs = parser.parse_args()
 myargs.outputformat = ".png"
+
+
+minumuDensity = float(myargs.density)
 
 # select debris shell min and max altitude
 altmin = float(myargs.alt[0])
@@ -135,10 +138,13 @@ outfileroot += f'{myargs.mode}_{int(myTel.lat):02d}_{int(sunAlpha):02d}'
 # restricting on requested radius range
 print("=Read debris definition")
 DEBRIS = debris.make_debrisTab( myrange=np.arange(radmin,radmax))
+print('Number of altitude shells:',len(DEBRIS))
+
 
 # Azimut-Elevation mesh
-AzEl = ca.fillAzEl(step)
-AzElreshape = np.reshape(AzEl,(2,AzEl.shape[1]*AzEl.shape[2]))
+AzEl = ca.fill_AzEl(step)
+AzEl_r = np.reshape(AzEl,(2,AzEl.shape[1]*AzEl.shape[2]))
+   # all *_r are "reshaped"
 
 #
 # Natural Sky brightness
@@ -147,7 +153,7 @@ AzElreshape = np.reshape(AzEl,(2,AzEl.shape[1]*AzEl.shape[2]))
 # accounting for the twilight/ sun elevation
 magSkyZenith = debris.modelTwilight(sunElev)
 # and airmass/elevation 
-magSky = np.reshape(debris.modelSkyBrightness(AzElreshape[1,:] , 
+magSky = np.reshape(debris.modelSkyBrightness(AzEl_r[1,:] , 
                                               mag=magSkyZenith),
                             (AzEl.shape[1],AzEl.shape[2]) )
 fluxSky = 10.**(-0.4* magSky)
@@ -156,27 +162,56 @@ fluxSky = 10.**(-0.4* magSky)
 #
 # LOOP THROUGH THE DEBRIS SHELLS
 #
-fluxDebris = np.zeros(   (AzEl.shape[1],AzEl.shape[2]) )
+fluxDebris  = np.zeros(   (AzEl.shape[1],AzEl.shape[2]) )
+countDebris = np.zeros(   (AzEl.shape[1],AzEl.shape[2]) )
+
+countShells = 0
 
 for i in  np.arange(len(DEBRIS) -1):
     # restrict to requested altitude range
     if DEBRIS['alt'][i] >= altmin and DEBRIS['alt'][i] <= altmax:
-        print(i, DEBRIS["alt"][i])
+        countShells += 1
+
+        satAlt = DEBRIS['alt'][i] 
+
+        # compute the geometry for each AzEl pointing
+        surface_r, illum_r, sunPhFrac_r, Delta_r = debris.modelOneConst_Geometry(
+            AzEl_r, myTel.lat, sunAlpha, sunDelta,  satAlt )
+
+        # model the shell
+        shell_countDebris = debris.modelOneConst_Count(
+                surface_r, illum_r, sunPhFrac_r, Delta_r,
+                DEBRIS['surf_n'][i]   )
+
         # model the shell, and summ the contribution
-        fluxDebris +=  np.reshape(debris.modelOneConstMag(AzElreshape,myTel.lat, sunAlpha,sunDelta,
-                                    DEBRIS['alt'][i],
-                                    DEBRIS['surf_a'][i]   ),
-                            (AzEl.shape[1],AzEl.shape[2]) )
+        shell_fluxDebris = debris.modelOneConst_Flux(
+                surface_r, illum_r, sunPhFrac_r, Delta_r,
+                DEBRIS['surf_a'][i]   )
+
+
+        # contribution to the background is negligible if less than 
+        # 1 particle per sq.deg
+        shell_fluxDebris[ shell_countDebris <  minumuDensity ] = 0.
+
+
+        # summ the contribution
+        countDebris +=  np.reshape( shell_countDebris,  (AzEl.shape[1],AzEl.shape[2]) )
+        fluxDebris +=  np.reshape( shell_fluxDebris, (AzEl.shape[1],AzEl.shape[2]) )
         # fluxDebris now contains the total flux from all debris for each point of the AzEl mesh
+
+
+
+print(f'Processed {countShells} shells')
+
 
 # Multiplication of current values
 fluxDebris *= multiplicationFactor
 
+# Conversion to sq.arcsec; values are computed for 1sqdeg on sky
+fluxDebris /= (3600.*step)**2
+
 magDebris = -2.5*np.log10(fluxDebris) 
-magDebris[ fluxDebris == 0 ] = 9999. # avoid NaN=log(0)
-
 magTotal = -2.5*np.log10(fluxDebris + fluxSky) 
-
 fluxRatio = fluxDebris / fluxSky
 
 
@@ -191,100 +226,94 @@ nTick = 9
 
 if myargs.mode == "skyMag":
     plotit = -magSky 
-    vmin = np.amin( plotit )
-    vmax = np.amax( plotit )
-    vsign = -1.
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
     barLabel = "Sky background [Mag/arcsec$^2$]"
+    zenithLabel =''
     cmap = cp.csunmap
-    def barFmt(x):
-        return f"{x:.1f}"
+    showDebrisLabel = False
 
 elif myargs.mode == "debrisMag":
     plotit = -magDebris
-    vmin = np.amin( plotit[plotit > -990] )
-    vmax = np.amax( plotit[plotit > -990] )
-    vsign = -1.
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
     barLabel = "Debris [Mag/arcsec$^2$]"
     cmap = cp.csunmap
-    def barFmt(x):
-        return f"{x:.1f}"
-    
+    showDebrisLabel = True
+    zenithLabel =f'Debris Mag: {-plotit[-1,0]:.1f} mag/arcsec$^2$)' 
+        
 elif myargs.mode == "totalMag":
     plotit = -magTotal
-    vmin = np.amin( plotit[plotit > -990] )
-    vmax = np.amax( plotit[plotit > -990] )
-    vsign = -1.
-    barLabel = "Debris [Mag/arcsec$^2$]"
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
+    barLabel = "Sky+Debris [Mag/arcsec$^2$]"
     cmap = cp.csunmap
-    def barFmt(x):
-        return f"{x:.1f}"
-
+    showDebrisLabel = True
+    zenithLabel =f'Total Mag: {-plotit[-1,0]:.1f} mag/arcsec$^2$)' 
 
 
 elif myargs.mode == "debrisFlux":
-    plotit = fluxDebris
-    vmin = np.amin( plotit[plotit > 0] )
-    vmax = np.amax( plotit[plotit > 0] )
-    if vmin == vmax:
-        vmin *= .9
-        vmax *= 1.1
-
-    vsign = 1.
+    plotit = np.log10(fluxDebris)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(plotit)
     barLabel = "Debris [flux/arcsec$^2$]"
     cmap = cp.csunmap
-    def barFmt(x):
-        return f"{x:.0f}"
+    showDebrisLabel = True
+    zenithLabel =f'Debris flux: {10.**plotit[-1,0]:.1g} fluxUnits/arcsec$^2$ (ZP=0)' 
 
 
+elif myargs.mode == "debrisCount":
+    plotit = np.log10(countDebris)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(plotit)
+    barLabel = "Debris [N/deg$^2$]"
+    cmap = cp.csunmap
+    showDebrisLabel = True
+    zenithLabel =f'Debris count: {10.**plotit[-1,0]:.1g} grain/sq.deg' 
 
 elif myargs.mode == "ratio":
     plotit = np.log10(fluxRatio)
-    vmin = -5 # np.amin( plotit[fluxRatio > 0] )
-    vmax = 1 #np.amax( plotit[fluxRatio > 0] )
-    vsign = 1.
-    barLabel = "Debris/Sky "
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(plotit)
+    barLabel = "Debris flux/Sky flux "
     cmap = cp.gyrd
-    nTick = vmax-vmin +1
-    def barFmt(x):
-        return f"$10^{{{x:.0f}}}$"
+    cmap = cp.csunmap
 
-print("CONTOURSminmax",  vmin, vmax)
+    showDebrisLabel = True
+    wpc = 10**(-0.4*(magDebris[-1,0] - magSkyZenith))*100.
+    zenithLabel =f'Debris brightness: {magDebris[-1,0]:.1f} = {wpc:.2f}%' 
+
+
+elif myargs.mode == "surface":
+    plotit = np.log10( np.reshape(surface_r,(AzEl.shape[1],AzEl.shape[2]) ) )
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(plotit)
+    
+    barLabel = f'Surface [km2] for a {step**2} sq.deg at alt={satAlt:.0f}km '
+    cmap = cp.csunmap
+
+    showDebrisLabel = False
+    zenithLabel =f'Surface: {10.**plotit[-1,0]:.1f} km$^2$/sq.deg' 
+
+else:
+    print('uh?')
+
+# actual plot
 
 cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1],
                       plotit ,
-                      levels=np.linspace(vmin,vmax,nTick*3-2),  # NUMBER OF LEVELS
-                      vmin=vmin, vmax=vmax ,
+                      levels=50,
+                      vmin=logMinValue, vmax=logMaxValue ,
                       extend='both',
                       cmap=cmap)
 cfd.cmap.set_under('k') # below minimum -> black
+cfd.cmap.set_over(cmap(1.)) 
 
 
 #----------------------------------------------------------------------
 #Scalebar
+
+
+
+
 if 1:
     cbar = fig.colorbar(cfd)
-    blab = ""
-    bnorm = 0. # log of normalization.
-    barmag = np.linspace(vmin, vmax, nTick)
-
-    if np.log10(vmin) < 0.:
-        print ("LOG")
-        bnorm = int( np.log10(vmin) )
-        wnorm = int( np.log10( vmax/vmin ) +.5 ) 
-
-        print(vmin, vmax)
-        print(bnorm, bnorm+ wnorm)
-
-        barmag = 10.**np.arange(bnorm, bnorm+ wnorm, .5)
-
-        nTick = wnorm+1
-        blab = r' $\times 10^'+f'{{{bnorm}}}$'
-
-    print('VMINMAX',vmin, vmax)
-
-    cbar.set_ticks(barmag)
-    cbar.set_ticklabels( [ barFmt(x) for x in barmag*10**-bnorm ])
-    cbar.set_label(barLabel + blab)
+    cbar.set_ticks( barTicks )
+    cbar.set_ticklabels( barTickLabels)
+    cbar.set_label(barLabel)
 
 
 #------------------------------------------------------------------------------
@@ -318,18 +347,27 @@ if 1:
     x = 1.
     y = 1.2
     dy = 0.08
+    if showDebrisLabel:
 
-    debris.get_totalShellSurface(DEBRIS)
-    totalMass = sum( DEBRIS['surf_m']* DEBRIS['surface'])*multiplicationFactor
+        mylabel = f'Debris: Size: $10^{{ {-radmin:.0f} }}$ .. $10^{{ {-radmax+1:.0f} }}$ m' # {{: escaped {
+        cp.azlab(ax,x,y,mylabel,14)
+        y -= dy
 
-    cp.azlab(ax,x,y,f'Albedo: {debris.p_albedo:.2f}')
-    y -= dy
+        cp.azlab(ax,x,y,f'Altitude: {min(DEBRIS["alt"]):.0f} .. {max(DEBRIS["alt"]):.0f} km')
+        y -= dy
 
-    cp.azlab(ax,x,y,f'Debris mass: {totalMass:.2e} kg')
-    y -= dy
+        DEBRIS['surface'] = 4.*np.pi* (constants.earthRadius + DEBRIS['alt'])
+        totalMass = sum( DEBRIS['surf_m']* DEBRIS['surface'])*multiplicationFactor
+        cp.azlab(ax,x,y,f'Total mass: {totalMass:.2e} kg')
+        y -= dy
 
-    cp.azlab(ax,x,y,f'Factor: {multiplicationFactor:.2e} x today')
-    y -= dy
+        cp.azlab(ax,x,y,f'= {multiplicationFactor:.1e} x today')
+        y -= dy
+
+
+        cp.azlab(ax,x,y,f'Albedo: {debris.p_albedo:.2f}')
+        y -= dy
+
 
 
 
@@ -348,19 +386,17 @@ if 1:
     y -= dy
     cp.azlab(ax,x,y,r'$\delta: '+f'{sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
     y -= dy
-    cp.azlab(ax,x,y,r'Sky brightness at Z: '+f'{magSkyZenith:.1f} mag/sq.arcsec')
-
-
-    
 
 
     # bottom right
     x= 1.
     y= -1.08
-    cp.azlab(ax,x,y,f'Altitude: {altmin:.0f} .. {altmax:.0f} km',14)
+    cp.azlab(ax,x,y,f'Zenith: ',14)
+    
     y -= dy
-    mylabel = f'Size: $10^{{ {-radmin:.0f} }}$ .. $10^{{ {-radmax+1:.0f} }}$ m' # {{: escaped {
-    cp.azlab(ax,x,y,mylabel,14)
+    cp.azlab(ax,x,y,f'Sky brightness: {magSkyZenith:.1f} mag/sq.arcsec')
+    y -= dy
+    cp.azlab(ax,x,y,zenithLabel)
 
 
 

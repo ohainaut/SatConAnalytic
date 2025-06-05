@@ -22,7 +22,8 @@ colors = ["darkred","red","orange","yellow","green","lawngreen"]
 cairmap = LinearSegmentedColormap.from_list("mycmap", colors)
 
 # colors for sun altitude
-colors = ['darkblue','b','deepskyblue','paleturquoise']
+colors = ['k','darkblue','mediumblue','b','deepskyblue','paleturquoise']
+colors = ['#000', '#00f', '#55f', '#aaf', '#eef']
 csunmap = LinearSegmentedColormap.from_list("mycmap", colors)
 
 
@@ -218,4 +219,55 @@ def drawHADec(lat):
             plt.text(np.radians(az[i]),90.-el[i],'{:.0f}$^\circ$'.format(Decdef[i]), color=corc, fontsize=10)
 
 
+
+#---
+def getBarLim(logDensity):
+    '''
+    Top and bottom of the bar for logDensity as a standard log
+
+    logMinValue < logMaxValue, ALWAYS
+    If reverse scale is needed, 
+    '''
+
+    if len(logDensity[logDensity > -998] ) == 0:
+        #empty sky, set default values; plot will be black
+        logMinValue = -4.
+        logMaxValue =  .9
+    else:
+        logMinValue = np.amin(logDensity[logDensity > -998])
+        logMaxValue =  np.amax(logDensity[logDensity > -998])
+
+    return logMinValue, logMaxValue
+
+
+def setBarLim_standardLog(logDensity):
+    '''prepare Bar limits, ticks and labels for a standard logDensity'''
+
+
+    logMinValue, logMaxValue = getBarLim(logDensity)
+    bMin = np.floor(logMinValue*3.)/3. 
+    bMax = np.ceil(logMaxValue*3. )/3.
+    barTicks = np.linspace(bMin, bMax, 10)
+    barTicks = barTicks[ barTicks >= logMinValue -.35 ]
+    barTicks = barTicks[ barTicks <= logMaxValue +.35 ]
+    barTickLabels = [ f'{x:.1g}' for x in 10.**barTicks]
+
+
+    return barTicks, barTickLabels, logMinValue, logMaxValue
+
+
+def setBarLim_negMag(logDensity):
+    '''prepare Bar limits, ticks and labels for a mag plot
+    The "logDensity" is -mag'''
+
+    logMinValue, logMaxValue = getBarLim(logDensity)
+    bMin = np.floor( logMinValue )
+    bMax = np.ceil( logMaxValue )
+    barTicks = np.arange(bMin, bMax, .5 )
+
+    barTickLabels = [ f'{x:.1f}' for x in -barTicks]
+    
+    return barTicks, barTickLabels, logMinValue, logMaxValue
+
+#----
 

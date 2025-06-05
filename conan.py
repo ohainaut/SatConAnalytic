@@ -298,7 +298,7 @@ def AltAz2Delta(obsLatitude,satAlt,AzEl):
     return alpha, delta, Delta1, costheta
 
 #----------------------------------------------------------------------
-def fillAzEl(step):
+def fill_AzEl(step):
     '''Create a AzEl grid, [0,360] * [0, 90]
 
     IN: step [deg] of the array in Az and in El
@@ -312,6 +312,22 @@ def fillAzEl(step):
 
     return np.array([fillAz, fillEl])
 
+#----------------------------------------------------------------------
+def surface_AzEl(Az, El, step):
+    '''Surface [sq.deg] an element centred on AzEl, widdh=step
+
+    IN: Az, El, step [deg] 
+
+    OUT: surfaceAz [sqDeg]
+    '''
+
+    radius = 180./np.pi
+    surface = 2.*np.pi* radius**2 # 1/2 sphere
+    surface *=  (np.sin(np.radians(El + step/2.)) - np.sin(np.radians(El - step/2.))) 
+         # difference of callotes; =2 for full range
+    surface *=  step/360. # longitude fraction
+
+    return surface
 #----------------------------------------------------------------------
 def radec2elev(ha,delta,obsLatitude):
     '''Elevation from HourAngle, Delta
@@ -521,7 +537,8 @@ def AzEl2Vel(alpha, delta, Delta,obsLatitude,satInc,satAlt):
     # geocentric coordinates of the observatory
     wCO = Pol2Rec((0.,obsLatitude), constants.earthRadius)    
     CO = np.array([[wCO[0]], [wCO[1]], [wCO[2]]])
-    
+
+
     # topocentric coords of sat:
     OS = CS - CO
 

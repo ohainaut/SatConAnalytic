@@ -190,7 +190,7 @@ print()
 
 
 # Azimuth-Elevation mesh:
-AzEl = ca.fillAzEl(step)               # mesh of Azimut-Elevation
+AzEl = ca.fill_AzEl(step)               # mesh of Azimut-Elevation
 
 # Arrays with the various results; same array geometry as AzEl 
 densSatAll = np.zeros_like(AzEl[0])    # density of satellites     (all sat)
@@ -335,75 +335,19 @@ print ("telinslabel",myargs.code)
 
 # select what to plot and  limits for the colormap
 
-#---
-def getBarLim(logDensity):
-    '''
-    Top and bottom of the bar for logDensity as a standard log
-
-    logMinValue < logMaxValue, ALWAYS
-    If reverse scale is needed, 
-    '''
-
-    if myargs.minmax is not None:
-        print(myargs.minmax)
-        logMinValue = np.log10(float(myargs.minmax[0]))
-        logMaxValue = np.log10(float(myargs.minmax[1]))
-        print('LV from params:', logMinValue, logMaxValue)
-    else:
-        if len(logDensity[logDensity > -998] ) == 0:
-            #empty sky
-            logMinValue = -4.
-            logMaxValue =  .9
-        else:
-            logMinValue = np.percentile( logDensity[logDensity > -998], 1.)
-            logMaxValue = np.percentile( logDensity[logDensity > -998], 99.)
-        print('LV from data', logMinValue, logMaxValue)
-
-    return logMinValue, logMaxValue
-
-
-def setBarLim_standardLog(logDensity):
-    '''prepare Bar limits, ticks and labels for a standard logDensity'''
-    logMinValue, logMaxValue = getBarLim(logDensity)
-    bMin = int(logMinValue)
-    bMax = int(logMaxValue +.001)
-    barTicks = np.arange(bMin, bMax , .333333)
-    barTicks = barTicks[ barTicks >= logMinValue -.35 ]
-    barTicks = barTicks[ barTicks <= logMaxValue +.35 ]
-    barTickLabels = [ f'{x:.1g}' for x in 10.**barTicks]
-
-    return barTicks, barTickLabels, logMinValue, logMaxValue
-
-
-def setBarLim_negMag(logDensity):
-    '''prepare Bar limits, ticks and labels for a mag plot
-    The "logDensity" is -mag'''
-
-    logMinValue, logMaxValue = getBarLim(logDensity)
-    bMin = int(logMinValue*3.)/3. 
-    bMax = int(logMaxValue*3. -1)/3.
-    barTicks = np.arange(bMin, bMax , .333333)
-    #barTicks = barTicks[ barTicks >= logMinValue -.35 ]
-    #barTicks = barTicks[ barTicks <= logMaxValue +.35 ]
-    barTickLabels = [ f'{x:.1f}' for x in -barTicks]
-
-    return barTicks, barTickLabels, logMinValue, logMaxValue
-
-#----
-
 
 if myargs.code == "TrailogDensity":
     barLabel = "Number of trails./deg/sec."
 
     logDensity = np.log10( dv )
-    barTicks, barTickLabels, logMinValue, logMaxValue = setBarLim_standardLog(logDensity)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(logDensity)
     print("Tdensity")
 
 elif myargs.code == "SatDens":
     barLabel = "Number of sat./sq.deg."
 
     logDensity = np.log10( ds )
-    barTicks, barTickLabels, logMinValue, logMaxValue = setBarLim_standardLog(logDensity)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(logDensity)
     print("Sdensity")
 
 elif myargs.code == "skyMag":
@@ -412,7 +356,7 @@ elif myargs.code == "skyMag":
     
         logDensity =  2.5* np.log10( fluxSatTotal ) # = -1*mag
             # we plot -mag, then we change the scale of the bar
-        logMinValue, logMaxValue = getBarLim(logDensity)
+        logMinValue, logMaxValue = cp.getBarLim(logDensity)
         bMin = int(logMinValue*3.)/3. 
         bMax = int(logMaxValue*3. -1)/3.
         barTicks = np.arange(bMin, bMax , .333333)
@@ -424,11 +368,7 @@ elif myargs.code == "skyMag":
         barLabel = "Surface brightness [mag/sq.arcsec]"
 
         logDensity =  2.5* np.log10( fluxSatTotal ) # = -1*mag
-        barTicks, barTickLabels, logMinValue, logMaxValue = setBarLim_negMag(logDensity)
-    
-        #logMinValue, logMaxValue = -30., -20.
-        #barTicks      = np.arange(logMinValue, logMaxValue,.5)
-        #barTickLabels = [ f'{x:.1f}' for x in -barTicks]
+        barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(logDensity)
         print("skyMag")
 
 
@@ -440,7 +380,7 @@ elif myargs.code == "skyFrac":  # fraction of the sky surfbrightness
     logDensity =  2.5* np.log10( fluxSatTotal ) + skymag
     #+ 5 # +5 for [%]
 
-    logMinValue, logMaxValue = getBarLim(logDensity)
+    logMinValue, logMaxValue = cp.getBarLim(logDensity)
     bMin = int(logMinValue*3.)/3. 
     bMax = int(logMaxValue*3. -1)/3.
     barTicks = np.arange(bMin, bMax , .333333)
@@ -502,7 +442,7 @@ else: # other specific (including EFFECT)
 
 
     else:
-        barTicks, barTickLabels, logMinValue, logMaxValue = setBarLim_standardLog(logDensity)
+        barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(logDensity)
 
         print('HEREl', logMinValue, logMaxValue)
         print('HEREb', barTicks, barTickLabels)
