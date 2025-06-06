@@ -88,8 +88,8 @@ def modelSkyBrightness(El, f=0.7, mag=22. ):
 
 def modelTwilight(sunEl):
     if sunEl > 0: return 8.
-    elif sunEl < -18: return 22.
-    else: return  -14.*(sunEl+18.)/18. + 22.
+    elif sunEl < -18: return constants.magSky
+    else: return  (8.-constants.magSky)*(sunEl+18.)/18. + constants.magSky
 
 
 #--------------------------------------------------------------------------------------------

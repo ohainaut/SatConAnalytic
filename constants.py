@@ -7,7 +7,8 @@
 
 
 magSun = -26.75  # V magnitude of the Sun
-magSky = 21.7    # V magnitude of the sky, mag/sq.arcsec, patat08
+#magSky = 21.7    # V magnitude of the sky, mag/sq.arcsec, patat08
+magSky = 22.0     # V magnitude of the sky, mag/sq.arcsec, canonical value
 au_m   = 149597870700. # Astronomical unit in km
 
 G             = 6.67430E-11 # Universal Gravity constant

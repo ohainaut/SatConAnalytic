@@ -67,8 +67,9 @@ parser.add_argument('-T','--code',
                          telescope, instrument, resolution, latitude.
                          ''')
 parser.add_argument('-M','--mode', default="ratio", 
-                    choices=['totalMag', 'skyMag', 'ratio', 
+                    choices=['skyMag', 'skyFlux',
                              'debrisMag',  'debrisFlux', 'debrisCount', 
+                             'totalMag', 'ratio', 
                              'surface'],
                     help="Mode: what to plot")
 
@@ -178,25 +179,27 @@ for i in  np.arange(len(DEBRIS) -1):
         surface_r, illum_r, sunPhFrac_r, Delta_r = debris.modelOneConst_Geometry(
             AzEl_r, myTel.lat, sunAlpha, sunDelta,  satAlt )
 
-        # model the shell
-        shell_countDebris = debris.modelOneConst_Count(
+        # model the particle count
+        shell_countDebris_r = debris.modelOneConst_Count(
                 surface_r, illum_r, sunPhFrac_r, Delta_r,
                 DEBRIS['surf_n'][i]   )
 
-        # model the shell, and summ the contribution
-        shell_fluxDebris = debris.modelOneConst_Flux(
+        # model the flux
+        shell_fluxDebris_r = debris.modelOneConst_Flux(
                 surface_r, illum_r, sunPhFrac_r, Delta_r,
                 DEBRIS['surf_a'][i]   )
+        # account for extinction
+        shell_fluxDebris_r *= 10.**( -.4* constants.extinction * (Delta_r/satAlt))
 
 
         # contribution to the background is negligible if less than 
         # 1 particle per sq.deg
-        shell_fluxDebris[ shell_countDebris <  minumuDensity ] = 0.
+        shell_fluxDebris_r[ shell_countDebris_r <  minumuDensity ] = 0.
 
 
         # summ the contribution
-        countDebris +=  np.reshape( shell_countDebris,  (AzEl.shape[1],AzEl.shape[2]) )
-        fluxDebris +=  np.reshape( shell_fluxDebris, (AzEl.shape[1],AzEl.shape[2]) )
+        countDebris +=  np.reshape( shell_countDebris_r,  (AzEl.shape[1],AzEl.shape[2]) )
+        fluxDebris +=  np.reshape( shell_fluxDebris_r, (AzEl.shape[1],AzEl.shape[2]) )
         # fluxDebris now contains the total flux from all debris for each point of the AzEl mesh
 
 
@@ -232,6 +235,18 @@ if myargs.mode == "skyMag":
     cmap = cp.csunmap
     showDebrisLabel = False
 
+if myargs.mode == "skyFlux":
+    plotit = -magSky 
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
+
+    # for the unit conversion, we change the labels:
+    barTickLabels = [f'{w:.0f}' for w in ca.mag2microcd(-barTicks)] #barTicks is -mag
+    barLabel = "Surface brightness [$\mu$cd/m$^2$]"
+
+    zenithLabel =f'Sky flux: {ca.mag2microcd(magSky[-1,0]):.1f} $\mu$cd/m$^2$' 
+    cmap = cp.csunmap
+    showDebrisLabel = False
+
 elif myargs.mode == "debrisMag":
     plotit = -magDebris
     barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
@@ -250,12 +265,16 @@ elif myargs.mode == "totalMag":
 
 
 elif myargs.mode == "debrisFlux":
-    plotit = np.log10(fluxDebris)
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(plotit)
-    barLabel = "Debris [flux/arcsec$^2$]"
+    plotit = -magDebris
+    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
+    
+    # for the unit conversion, we change the labels:
+    barTickLabels = [f'{w:.2g}' for w in ca.mag2microcd(-barTicks)] #barTicks is -mag
+    barLabel = "Surface brightness [$\mu$cd/m$^2$]"
     cmap = cp.csunmap
     showDebrisLabel = True
-    zenithLabel =f'Debris flux: {10.**plotit[-1,0]:.1g} fluxUnits/arcsec$^2$ (ZP=0)' 
+    zenithLabel =  f'Flux: Debris= {ca.mag2microcd(magDebris[-1,0]):.0f}, ' 
+    zenithLabel += f'Sky= {ca.mag2microcd(magSky[-1,0]):.0f} $\mu$cd/m$^2$' 
 
 
 elif myargs.mode == "debrisCount":
