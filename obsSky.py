@@ -329,12 +329,9 @@ else:
     exit(1)
     
 # colormap
-
 cmap = "magma"
-print ("telinslabel",myargs.code)
 
 # select what to plot and  limits for the colormap
-
 
 if myargs.code == "TrailogDensity":
     barLabel = "Number of trails./deg/sec."

@@ -29,7 +29,7 @@ import debris
 
 #----- config
 step = 1.#30. #deg >~1. Smaller values take forever
-multiplicationFactor =  1000 # magic factor wrt today
+multiplicationFactor =  1 # magic factor wrt today
 
 
 
@@ -77,7 +77,7 @@ myargs = parser.parse_args()
 myargs.outputformat = ".png"
 
 
-minumuDensity = float(myargs.density)
+minimumDensity = float(myargs.density)
 
 # select debris shell min and max altitude
 altmin = float(myargs.alt[0])
@@ -194,7 +194,7 @@ for i in  np.arange(len(DEBRIS) -1):
 
         # contribution to the background is negligible if less than 
         # 1 particle per sq.deg
-        shell_fluxDebris_r[ shell_countDebris_r <  minumuDensity ] = 0.
+        shell_fluxDebris_r[ shell_countDebris_r <  minimumDensity ] = 0.
 
 
         # summ the contribution
