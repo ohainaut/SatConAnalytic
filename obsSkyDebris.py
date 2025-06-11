@@ -273,7 +273,7 @@ elif myargs.mode == "debrisFlux":
     barLabel = "Surface brightness [$\mu$cd/m$^2$]"
     cmap = cp.csunmap
     showDebrisLabel = True
-    zenithLabel =  f'Flux: Debris= {ca.mag2microcd(magDebris[-1,0]):.0f}, ' 
+    zenithLabel =  f'Flux: Debris= {ca.mag2microcd(magDebris[-1,0]):.2f}, ' 
     zenithLabel += f'Sky= {ca.mag2microcd(magSky[-1,0]):.0f} $\mu$cd/m$^2$' 
 
 
