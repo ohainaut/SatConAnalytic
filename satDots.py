@@ -24,10 +24,10 @@ import matplotlib.pyplot as plt
 from astropy.table import Table, vstack
 
 # import ConAn routines
-import conan as ca
-import conanplot as cp
+import conan as caLib
+import conanplot as cpLib
 import constellations
-import constants as cst
+import constants as caCst
 
 #outpath = "/home/ohainaut/public_html/outsideWorld/"
 outpath = "./"
@@ -79,7 +79,7 @@ def LongLatToGeoXYZ(alt, latr, longr):
 
     [same unit as cst.earthRadius, km]'''
 
-    rs = cst.earthRadius + alt
+    rs = caCst.earthRadius + alt
     x = rs* np.cos(latr)* np.cos(longr) 
     y = rs* np.cos(latr)* np.sin(longr)  # note -
     z = rs* np.sin(latr)
@@ -115,7 +115,7 @@ def illuminatedSat(xg, yg, zg, sunAlpha, sunDelta):
 
     #- satellites in sunlight:
     w =  ((xS>0)*1  #those in front of the Earth
-            +(distS > cst.earthRadius)*1) #those behing but out of the shadow
+            +(distS > caCst.earthRadius)*1) #those behing but out of the shadow
     return w>0 # True for the illuminated satellites
 #-----------------------------------------------------------------------------
 
@@ -130,7 +130,7 @@ def geoXYZToTopXYZ(latr, x,y,z ):
 
     xo = x * sinLatO     - z * cosLatO
     yo =              y
-    zo = x * cosLatO     + z * sinLatO - cst.earthRadius  # <- shift z to observatory
+    zo = x * cosLatO     + z * sinLatO - caCst.earthRadius  # <- shift z to observatory
     return xo, yo, zo
 #-----------------------------------------------------------------------------
 
@@ -150,7 +150,7 @@ def topoXYZToAzrZD(x,y,z, Delta=None):
     return Azr,ZD
 #-----------------------------------------------------------------------------
 
-def satMag(x,y,z, alt, mag550=cst.mag550, Delta=None, Sun=None):
+def satMag(x,y,z, alt, mag550=caCst.mag550, Delta=None, Sun=None):
     if Delta is None:
         Delta = topoXYZToDelta(x,y,z)
 
@@ -356,25 +356,25 @@ if __name__ == "__main__":
     parser.add_argument('-M','--magbloom',   help='''Observatory: Saturation magnitude [mag]. Brighter object destroy the full exposure: their trailf=1 (OVERWRITE preset)''')
     parser.add_argument(     '--instrument', help='''Observatory: Name of the instrument for label (OVERWRITE preset)''')
     parser.add_argument(     '--telescope',  help='''Observatory: Name of the telescope for label (OVERWRITE preset)''')
-    parser.add_argument(     '--mode',       default="OBS",
-                        help='''BRIGHT FAINT ALL OBS EFFECT''')
+    parser.add_argument(     '--mode',       default="ALL",
+                        help='''ALL OBS''')
     myargs = parser.parse_args()
 
 
     #- find telescope
     print('TELESCOPE/INSTRUMENT SETUP')
-    myTel = cp.getTelescope(myargs)
+    myTel = cpLib.getTelescope(myargs)
     print(myTel)
 
     #- rectangular coord of observatory
-    xobs = cst.earthRadius * np.cos(np.radians(myTel.lat))
+    xobs = caCst.earthRadius * np.cos(np.radians(myTel.lat))
     yobs = 0.  # by def of xyz
-    zobs = cst.earthRadius * np.sin(np.radians(myTel.lat))
+    zobs = caCst.earthRadius * np.sin(np.radians(myTel.lat))
 
     #---
 
     # satellites
-    CONSTELLATIONS = ca.findConstellations(myargs.constellation)
+    CONSTELLATIONS = caLib.findConstellations(myargs.constellation)
     print('CONSTELLATIONS:')
     print(CONSTELLATIONS.ToC)
     print()
@@ -388,7 +388,7 @@ if __name__ == "__main__":
     # sun coordinates
     sunDelta =  float(myargs.DEC) # deg
     sunAlpha = timed -180. # sunAlpha is the HA [deg]
-    sunElev = ca.radec2elev(sunAlpha,sunDelta,myTel.lat)  # [deg]
+    sunElev = caLib.radec2elev(sunAlpha,sunDelta,myTel.lat)  # [deg]
     log.info(f'Sun: {sunAlpha/15.}h, {sunDelta} time={timeh}h elev={sunElev}')
 
 
@@ -428,8 +428,8 @@ if __name__ == "__main__":
     hlimkm = 4000. # km;   limits for the side view
     #- prepare the limb of the Earth for plots.
     wi = np.radians(np.linspace(0,360,360, endpoint=False))
-    xearth = cst.earthRadius* np.cos(wi)
-    yearth = cst.earthRadius* (np.sin(wi)-1.)
+    xearth = caCst.earthRadius* np.cos(wi)
+    yearth = caCst.earthRadius* (np.sin(wi)-1.)
 
     # NS
     axNS.set( aspect='equal')
@@ -463,13 +463,15 @@ if __name__ == "__main__":
             icol = (18+sunElev)/18.
             axPol.set_facecolor( (icol,icol,icol))
         else: 
-            axPol.set_facecolor( "k")
+            #axPol.set_facecolor( "k")
+            pass 
 
-        cp.initPolPlot(axPol)
+        cpLib.initPolPlot(axPol)
 
         if myargs.mode == "ALL":
             Sd = Sv[  ~Sv["bIlluminated"] ]
-            axPol.scatter(Sd["Azr"],Sd["ZD"], s=Sd["dot"], c="darkblue", alpha=0.5)
+            axPol.scatter(Sd["Azr"],Sd["ZD"], s=Sd["dot"], 
+                          c="darkblue", alpha=0.2)
 
         Si = Sv[  Sv["bIlluminated"] ]
         if myargs.mode in ["ALL",  "OBS"] :

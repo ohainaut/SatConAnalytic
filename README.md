@@ -14,7 +14,7 @@ Jump to section [Script Usage](#Script-Usage) Script Usage for the simulator scr
 
 ## Library
 
-conan.py is the main simulation library. The main function is modelOneConstMag. It returns the parameters for Eq.1 in [Bassa+22](https://ui.adsabs.harvard.edu/link_gateway/2022A&A...657A..75B/doi:10.1051/0004-6361/202142101), eg to compute $\rho_{\rm sat}$ and $\sigma_{\rm sat}$ for deriving $N_{\rm trails}$:
+`conan.py` is the main simulation library. `conanPlot.py` has many plot-related functions. The method `constellation.OneShell.modelOneShell()` returns the parameters for Eq.1 in [Bassa+22](https://ui.adsabs.harvard.edu/link_gateway/2022A&A...657A..75B/doi:10.1051/0004-6361/202142101), to compute $\rho_{\rm sat}$ and $\sigma_{\rm sat}$ for deriving $N_{\rm trails}$:
 
 $N_{\rm trail} = \rho_{\rm sat} \times A_{\rm FoV} + \sigma_{\rm sat} \times t_{\rm exp} \times L_{\rm FoV}$
 
@@ -31,15 +31,16 @@ where
 The firs term corresponds to the number of satellites present instantenously in the field, 
 the second term corresponds to the number of trails entering the field of view during the exposure.
 
-modelOneConstMag also returns the approx magnitude of the satellites present at Az,El, using a very simple model.
+`constellation.OneShell.modelOneShell()` also returns the approx magnitude of the satellites present at Az,El, using a very simple model.
 
 
 ``` 
-modelOneConstMag(AzEl,lat, 
+modelOneShell(self, AzEl,lat, 
                  sunAlpha,sunDelts,
-                 inc,alt,num ):
+              ):
     Model one shell over a set of Az,El pointings
     IN
+    - self: a SHELL object.
     - AzEl: array [ array of Azimuths, array of Elevations] on which the
       constellation shall be evaluated. Both in [deg]
     - lat: latitude of the observer [deg]
@@ -64,9 +65,9 @@ conanplot.py has a series of functions used for the plots in the two high-level 
 
 ### Constellations
 
-constellation.py reads a json file and returns it as a list of Constellation objects.
+`constellation.py` reads a json file and returns it as a list of Constellation objects.
 
-constellation.json has a list of pre-defined constellations, as follows:
+`constellation.json` has a list of pre-defined constellations, as follows:
 
 ```
 SL1old :         "Starlink Gen-1 (old)"  10627 sat, 8 shells
@@ -84,7 +85,7 @@ YESTURDAY :  "Today"s pre-constellation satellites (2020)"   2725 sat, 3 shells
 TODAYconst :     "Starlink and ONEWEB 2022-APR"  1763 sat, 2 shells
 ```
 
-Run constellations.py for a detailed list.
+Run `constellations.py` for a detailed list.
 
 Some meta-constellations are available in obsplot and objplot, for convenience:
 - SL = SL1 + SL2
@@ -97,7 +98,7 @@ Some meta-constellations are available in obsplot and objplot, for convenience:
 
 ### Telescopes and Instruments
 
-telescopes.py will read a json file defining the telescope and instrument parameters and return a list of Telescope objects.
+`telescopes.py` reads a json file defining the telescope and instrument parameters and return a list of Telescope objects.
 
 The JSON must have the following structure
 
@@ -128,7 +129,7 @@ Alternative attributes can be defined:
         "trailf"      : width of the trail relative to fovl. Default trail_arcsec/fovl_arcsec
 ```
 
-The telescopes.json file contains definition for:
+The `telescopes.json` file contains definition for:
 ```
 WFI:            MPE/ESO 2.2m WFI
 VST:            VST OmegaCam
@@ -165,7 +166,7 @@ ALMA:           ALMA beam
 
 ## Script Usage
 
-This package comes with 2 ready-to-use scripts. They can use pre-defined instruments or define the instrument with command line parameters.
+This package comes with some ready-to-use scripts. They can use pre-defined instruments or define the instrument with command line parameters.
 
 ### obsSky
 
@@ -182,7 +183,7 @@ Alternatively, the plot can show
 The script can optionally plot a realization of the satellites (using satDot, see below), for illustration.
 
 ```
-options:
+obsSky.py options:
   -h, --help            show this help message and exit
 
   Position of the sun:
@@ -370,6 +371,32 @@ options:
 
 Example of satDots plot: bottom left shows the sky over the observatory, with the dots of the illuminated satellites; the red ones are brighter than mag=7. On top and to the right, side views of the constellation, showing the limb of the Earth. Black dots are satellites in the shadow of the Earth. Top right shows the magnitude of the satellites as a function of their zenithal distance, for each satellite (dots) and their number as an histogram (blue: illuminated, grey: dark).
 
+### earthMap
+
+`earthMap.py` produces a map of the Earth with the number of illuminated satellites above a given elevation.
+
+```
+earthMap.py options:
+  -h, --help            show this help message and exit
+  -d DELTASUN, --deltaSun DELTASUN
+                        Sun: Declination of the Sun [deg]
+  -C CONSTELLATIONS, --constellations CONSTELLATIONS
+                        ID of the constellation group; list for a list
+  -e {60,30,20,10,0}, --elevCut {60,30,20,10,0}
+                        Observatory: Elevation cut-off
+
+```
+
+![Example of earthMap output](./earthMap.png)
+
+Daylight is marked in blue; the twilight lines are marked in dark blue and blue shading. The number of illuminated satellite above the selected elevation cut-off is represented by the color bar. 
+
+A possible realization of the individual satellites is represented by dots, yellow if illuminated by the Sun, dark red if not.
+
+When running `earthMap.py`  for a combination of sun position and constellation for the first time, it saves the main results for each location to cache files. When re-running it for the same constellation and sun position, it will use the cached files.
+
+Pending: compute the impact on data for an instrument type, accounting for limiting magnitude.
+
 ## Files
 
 The code is far from elegant, as I am learning Python on-the-fly... Please be compassionately forgiving. 
@@ -382,6 +409,7 @@ The code is far from elegant, as I am learning Python on-the-fly... Please be co
 - obsSky.py	main interface to plot the sky over an observatory
 - objectCalendar.py	main interface to plot an object's calendar
 - satDots.py: discrete simulation of the constellation.
+- earthMap.py: map of the Earth with number of satellites.
 
 ## Other implementation
 

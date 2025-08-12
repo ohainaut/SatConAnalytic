@@ -19,8 +19,8 @@ from conanplot import gyrd
 
 
 # import ConAn routines
-import conan as ca
-import conanplot as cp
+import conan as caLib
+import conanplot as cpLib
 from constants import mag550
 
 #----- config
@@ -90,16 +90,16 @@ else:
 
 #- find telescope
 print('TELESCOPE/INSTRUMENT SETUP')
-myTel = cp.getTelescope(myargs)
+myTel = cpLib.getTelescope(myargs)
 print(myTel)
 
 # sun
 sunDelta = float(myargs.deltaSun)
 sunElev  = np.arange(6., -91.,-3.) # sun elevation
-sunAlpha = ca.elev2ra(sunElev,sunDelta,myTel.lat) # get sun hourangle 
+sunAlpha = caLib.elev2ra(sunElev,sunDelta,myTel.lat) # get sun hourangle 
 print('SUNALPHA',sunAlpha)
 # get constellation id into a list of real constellations
-CONSTELLATIONS = ca.findConstellations(myargs.constellations)
+CONSTELLATIONS = caLib.findConstellations(myargs.constellations)
 print('CONSTELLATIONS:')
 print( CONSTELLATIONS.ToC )
 print()
@@ -111,7 +111,7 @@ print()
 #---  COMPUTE CONSTELLATIONS
 
 #fill ElAz:
-AzEl = ca.fillAzEl(step)
+AzEl = caLib.fillAzEl(step)
 
 elLim = [60.,30.,20., 10.,0.] # must be decreasing
 densSatAll = np.zeros( (len(elLim), len(sunElev)))
@@ -131,7 +131,7 @@ for c in CONSTELLATIONS.list:
         for iSun in range(len(sunElev)): # scan night
         
             # model the shell
-            densSi, veli, magi =  ca.modelOneConstMag(AzEl,myTel.lat, 
+            densSi, veli, magi =  caLib.modelOneConstMag(AzEl,myTel.lat, 
                                     sunAlpha[iSun],sunDelta,
                                     myShell.inc,
                                     myShell.alt, 
@@ -149,7 +149,7 @@ for c in CONSTELLATIONS.list:
 
 
             # sat count for almucantars
-            myShell.elevSati[:,iSun] = ca.integrateSat(elLim,AzEl,densSi)
+            myShell.elevSati[:,iSun] = caLib.integrateSat(elLim,AzEl,densSi)
 
         # finished one curve
         iEl = 4
@@ -303,7 +303,7 @@ if not myargs.plotflag:
 else:
     fig = plt.figure(figsize=(8,8))
     ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
-    _ = cp.initPolPlot(ax)
+    _ = cpLib.initPolPlot(ax)
     
     clab = 'k'
     ccon = 'k'
@@ -334,7 +334,7 @@ else:
 if myargs.labelplotflag:
 
     #Sun
-    azs,els = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
+    azs,els = caLib.radec2azel(sunAlpha, sunDelta, myTel.lat)
     plt.text(np.radians(azs), 93.,"$\odot$", va="center", ha='center')
     
 
@@ -343,12 +343,12 @@ if myargs.labelplotflag:
     y = 1.2
     dy = 0.08
     
-    cp.azlab(ax,x,y,'Observatory: {} Lat.: {:.1f}$^o$'.format(myTel.telescope, myTel.lat))
+    cpLib.azlab(ax,x,y,'Observatory: {} Lat.: {:.1f}$^o$'.format(myTel.telescope, myTel.lat))
     y -= dy
     
     
     if myargs.code != "SatDens" and myargs.code != "TrailDens" and myargs.code != "skyMag":
-        cp.azlab(ax,x,y,'Instrument: {}'.format(myTel.instrument))
+        cpLib.azlab(ax,x,y,'Instrument: {}'.format(myTel.instrument))
         y -= dy
 
         if myTel.fovl < 1./60.:
@@ -365,11 +365,11 @@ if myargs.labelplotflag:
         else:
             fovlw = '{:.2f}$^o$'.format(myTel.fovw)
 
-        cp.azlab(ax,x,y,'Fov: '+fovll+'x'+fovlw)
+        cpLib.azlab(ax,x,y,'Fov: '+fovll+'x'+fovlw)
         y -= dy
 
 
-        cp.azlab(ax,x,y,'Exp.t: {:.0f}s'.format(myTel.expt))
+        cpLib.azlab(ax,x,y,'Exp.t: {:.0f}s'.format(myTel.expt))
         y -= dy
         
 
@@ -377,16 +377,16 @@ if myargs.labelplotflag:
     # bottom left
     x= -1.
     y= -1.08
-    cp.azlab(ax,x,y,'$\odot$ Sun:',14)
+    cpLib.azlab(ax,x,y,'$\odot$ Sun:',14)
 
     y -= dy
     loct = (sunAlpha/15.+12.)%24
     
     loch = int(loct)
     locm = int( (loct-loch)*60.)
-    cp.azlab(ax,x,y,f'Loc.time: {loch:02d}:{locm:02d}')
+    cpLib.azlab(ax,x,y,f'Loc.time: {loch:02d}:{locm:02d}')
     y -= dy
-    cp.azlab(ax,x,y,f'$\delta: {sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
+    cpLib.azlab(ax,x,y,f'$\delta: {sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
     y -= dy
 
 
@@ -395,12 +395,12 @@ if myargs.labelplotflag:
     # top right
     x=1.
     y=1.2
-    cp.azlab(ax,x,y,'Constellation:',14)
+    cpLib.azlab(ax,x,y,'Constellation:',14)
     y -= dy
-    cp.azlab(ax,x,y,CONSTELLATIONS.name)
+    cpLib.azlab(ax,x,y,CONSTELLATIONS.name)
     
     y -= dy
-    cp.azlab(ax,x,y, f'Total {CONSTELLATIONS.totSat:.0f} sat.')
+    cpLib.azlab(ax,x,y, f'Total {CONSTELLATIONS.totSat:.0f} sat.')
 
     #bottom right
     x = 1.
@@ -408,7 +408,7 @@ if myargs.labelplotflag:
     if 1:
         lab = "Satellite magnitudes: V$_{1000km}=$" +\
             "{:3.1f}".format(mag550 -5.*np.log10(550./1000.) )
-        cp.azlab(ax,x,y,lab)
+        cpLib.azlab(ax,x,y,lab)
         y -= dy
 
     if mageffmin < -1000. or myargs.code == "skyMag":
@@ -418,22 +418,22 @@ if myargs.labelplotflag:
               "  V$_{eff}$"+" in [{:.1f}, {:.1f}]".format(mageffmax,mageffmin)
 
 
-    cp.azlab(ax,x,y,lab)
+    cpLib.azlab(ax,x,y,lab)
     y -= dy
 
     if myargs.mode == "BRIGHT":
-        cp.azlab(ax,x,y,"Selection: mag < {:.0f}".format(myTel.magbloom))
+        cpLib.azlab(ax,x,y,"Selection: mag < {:.0f}".format(myTel.magbloom))
     elif myargs.mode == "OBS":
         wlab = "Selection: mag$_{eff}$ < "+"{:.1f}".format(myTel.maglim)
-        cp.azlab(ax,x,y,wlab)
+        cpLib.azlab(ax,x,y,wlab)
     elif myargs.mode == "FAINT":
-        cp.azlab(ax,x,y,"Selection: mag > {:.0f}".format(myTel.magbloom))
+        cpLib.azlab(ax,x,y,"Selection: mag > {:.0f}".format(myTel.magbloom))
     elif myargs.mode == "EFFECT":
-        cp.azlab(ax,x,y,"Selection: all satellites, scaled for effect")
+        cpLib.azlab(ax,x,y,"Selection: all satellites, scaled for effect")
         wlab = "Detected: V$_{eff}$ < "+"{:.1f} ".format(myTel.maglim)
         wlab += "   Bleeding: V$_{eff}$ < "+"{:.1f}".format(myTel.magbloom)
         y -= dy
-        cp.azlab(ax,x,y,wlab)
+        cpLib.azlab(ax,x,y,wlab)
 
 
     
@@ -441,7 +441,7 @@ if myargs.labelplotflag:
 if myargs.almucantar and myargs.plotflag:
     # sat count on almucantars
     for we, wi in zip(elLim, elCount):
-        cp.azlab(ax,-0,(90.-we-5)/90.,'{:.0f} sat.>{:.0f}$^o$:'.format(wi,we),9,0.5*(1.-we/100.))
+        cpLib.azlab(ax,-0,(90.-we-5)/90.,'{:.0f} sat.>{:.0f}$^o$:'.format(wi,we),9,0.5*(1.-we/100.))
 
 print('finishing...')
 

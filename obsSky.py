@@ -31,16 +31,16 @@ from conanplot import gyrd
 
 
 # import ConAn routines
-import conan as ca
-import conanplot as cp
-import constants as cst
+import conan as caLib
+import conanplot as cpLib
+import constants as caCst
 import satDots
 
 
 
 
 #----- config
-step = 0.75 #deg >~1. Smaller values take forever
+step = 0.75 #deg ~1. Smaller values take forever
 #outpath = "/home/ohainaut/public_html/outsideWorld/"
 outpath = "./"
 
@@ -139,7 +139,7 @@ else:
 # OBSERVATORY TELESCOPE INSTRUMENT
 #
 print('=====TELESCOPE/INSTRUMENT SETUP=======================================')
-myTel = cp.getTelescope(myargs)
+myTel = cpLib.getTelescope(myargs)
 print(myTel)
 
 
@@ -147,13 +147,8 @@ print(myTel)
 # SUN
 #
 
-sunDelta = float(myargs.deltaSun)
-sunElev  = -float(myargs.elevSun)   
-if myargs.alphaSun is None:
-    sunAlpha = ca.elev2ra(sunElev,sunDelta,myTel.lat) # get sun hourangle for twilight
-else:
-    sunAlpha = float(myargs.alphaSun)
-    sunElev = ca.radec2elev(sunAlpha,sunDelta,myTel.lat)
+sunAlpha, sunDelta, sunElev = caLib.consolidate_sun(
+    myargs.alphaSun, myargs.deltaSun, myargs.elevSun, myTel.lat)
 
 
 print('SUN:')
@@ -161,7 +156,7 @@ print(f'\tLocal time: {((180+sunAlpha)/15.)%24:.2f}h')
 print(f'\tHA = {sunAlpha:.1f}deg  = {(sunAlpha/15.)%24:.2f}h, Dec = {sunDelta:.1f}d')
 print(f'\tElevation: {sunElev:.2f}d')
     
-sunAz,sunEl = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
+sunAz,sunEl = caLib.radec2azel(sunAlpha, sunDelta, myTel.lat)
 print(f'Validation: az= {sunAz:.2f}, el= {sunEl:.2f}d\n')
 
 
@@ -181,7 +176,7 @@ outfileroot += f'{myargs.magSelect}_{int(myTel.lat):02d}_{int(sunAlpha):02d}'
 #
 
 # expand the constellation Id into a list of real constellations
-CONSTELLATIONS = ca.findConstellations(myargs.constellations)
+CONSTELLATIONS = caLib.findConstellations(myargs.constellations)
 print('=====CONSTELLATIONS===================================================')
 print( CONSTELLATIONS.ToC )
 print()
@@ -190,7 +185,7 @@ print()
 
 
 # Azimuth-Elevation mesh:
-AzEl = ca.fill_AzEl(step)               # mesh of Azimut-Elevation
+AzEl = caLib.fill_AzEl(step)               # mesh of Azimut-Elevation
 
 # Arrays with the various results; same array geometry as AzEl 
 densSatAll = np.zeros_like(AzEl[0])    # density of satellites     (all sat)
@@ -211,11 +206,8 @@ mageffmin = 99.
 # Scan the constellation shells
 for myShell in CONSTELLATIONS.shells:                 
     # model the shell
-    densSi, veli, magi =  ca.modelOneConstMag(AzEl,myTel.lat, sunAlpha,sunDelta,
-                            myShell.inc,
-                            myShell.alt, 
-                            myShell.totSat
-                            )
+    densSi, veli, magi =  myShell.modelOneShell(AzEl,myTel.lat, sunAlpha,sunDelta )
+
 
     # extreme magnitudes
     magmax = max(magmax,np.amax(magi))
@@ -270,7 +262,7 @@ if myargs.plotflag:
 
 # sat count for almucantars
 elLim = [60.,30.,20., 10.,0.]
-elCount = ca.integrateSat(elLim,AzEl,densSatAll)
+elCount = caLib.integrateSat(elLim,AzEl,densSatAll)
          # elCount: number of sat higher than elLim
 
 
@@ -337,14 +329,14 @@ if myargs.code == "TrailogDensity":
     barLabel = "Number of trails./deg/sec."
 
     logDensity = np.log10( dv )
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(logDensity)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(logDensity)
     print("Tdensity")
 
 elif myargs.code == "SatDens":
     barLabel = "Number of sat./sq.deg."
 
     logDensity = np.log10( ds )
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(logDensity)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(logDensity)
     print("Sdensity")
 
 elif myargs.code == "skyMag":
@@ -353,7 +345,7 @@ elif myargs.code == "skyMag":
     
         logDensity =  2.5* np.log10( fluxSatTotal ) # = -1*mag
             # we plot -mag, then we change the scale of the bar
-        logMinValue, logMaxValue = cp.getBarLim(logDensity)
+        logMinValue, logMaxValue = cpLib.getBarLim(logDensity)
         bMin = int(logMinValue*3.)/3. 
         bMax = int(logMaxValue*3. -1)/3.
         barTicks = np.arange(bMin, bMax , .333333)
@@ -365,7 +357,7 @@ elif myargs.code == "skyMag":
         barLabel = "Surface brightness [mag/sq.arcsec]"
 
         logDensity =  2.5* np.log10( fluxSatTotal ) # = -1*mag
-        barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(logDensity)
+        barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_negMag(logDensity)
         print("skyMag")
 
 
@@ -377,7 +369,7 @@ elif myargs.code == "skyFrac":  # fraction of the sky surfbrightness
     logDensity =  2.5* np.log10( fluxSatTotal ) + skymag
     #+ 5 # +5 for [%]
 
-    logMinValue, logMaxValue = cp.getBarLim(logDensity)
+    logMinValue, logMaxValue = cpLib.getBarLim(logDensity)
     bMin = int(logMinValue*3.)/3. 
     bMax = int(logMaxValue*3. -1)/3.
     barTicks = np.arange(bMin, bMax , .333333)
@@ -439,7 +431,7 @@ else: # other specific (including EFFECT)
 
 
     else:
-        barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(logDensity)
+        barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(logDensity)
 
         print('HEREl', logMinValue, logMaxValue)
         print('HEREb', barTicks, barTickLabels)
@@ -458,7 +450,7 @@ if not myargs.plotflag:
 else:
     fig = plt.figure(figsize=(8,8))
     ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
-    cp.initPolPlot(ax)
+    cpLib.initPolPlot(ax)
     ax.set_facecolor("k")
     
     clab = 'k'
@@ -514,7 +506,7 @@ if myargs.shadeflag:
 
 #------------------------------------------------------------------------------
 # Draw RA,Dec lines
-cp.drawHADec(myTel.lat)
+cpLib.drawHADec(myTel.lat)
 
 
 #----------------------------------------------------------
@@ -531,12 +523,12 @@ if myargs.labelplotflag:
     y = 1.2
     dy = 0.08
     
-    cp.azlab(ax,x,y,'Observatory: {} Lat.: {:.1f}$^o$'.format(myTel.telescope, myTel.lat))
+    cpLib.azlab(ax,x,y,'Observatory: {} Lat.: {:.1f}$^o$'.format(myTel.telescope, myTel.lat))
     y -= dy
     
     
     if myargs.code != "SatDens" and myargs.code != "TrailogDensity" and myargs.code != "skyMag":
-        cp.azlab(ax,x,y,'Instrument: {}'.format(myTel.instrument))
+        cpLib.azlab(ax,x,y,'Instrument: {}'.format(myTel.instrument))
         y -= dy
 
         if myTel.fovl < 1./60.:
@@ -553,14 +545,14 @@ if myargs.labelplotflag:
         else:
             fovlw = '{:.2f}$^o$'.format(myTel.fovw)
 
-        cp.azlab(ax,x,y,'Fov: '+fovll+'x'+fovlw)
+        cpLib.azlab(ax,x,y,'Fov: '+fovll+'x'+fovlw)
         y -= dy
 
 
         if myTel.expt > 1.:
-            cp.azlab(ax,x,y,'Exp.t: {:.0f}s'.format(myTel.expt))
+            cpLib.azlab(ax,x,y,'Exp.t: {:.0f}s'.format(myTel.expt))
         else:   
-            cp.azlab(ax,x,y,'Exp.t: {:.0g}s'.format(myTel.expt))
+            cpLib.azlab(ax,x,y,'Exp.t: {:.0g}s'.format(myTel.expt))
         y -= dy
         
 
@@ -568,16 +560,16 @@ if myargs.labelplotflag:
     # bottom left
     x= -1.
     y= -1.08
-    cp.azlab(ax,x,y,r'$\odot$ Sun:',14)
+    cpLib.azlab(ax,x,y,r'$\odot$ Sun:',14)
 
     y -= dy
     loct = (sunAlpha/15.+12.)%24
     
     loch = int(loct)
     locm = int( (loct-loch)*60.)
-    cp.azlab(ax,x,y,f'Loc.time: {loch:02d}:{locm:02d}')
+    cpLib.azlab(ax,x,y,f'Loc.time: {loch:02d}:{locm:02d}')
     y -= dy
-    cp.azlab(ax,x,y,r'$\delta: '+f'{sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
+    cpLib.azlab(ax,x,y,r'$\delta: '+f'{sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
     y -= dy
 
 
@@ -586,21 +578,21 @@ if myargs.labelplotflag:
     # top right
     x=1.
     y=1.2
-    cp.azlab(ax,x,y,'Constellation:',14)
+    cpLib.azlab(ax,x,y,'Constellation:',14)
     y -= dy
-    cp.azlab(ax,x,y,CONSTELLATIONS.name)
+    cpLib.azlab(ax,x,y,CONSTELLATIONS.name)
     
     y -= dy
-    cp.azlab(ax,x,y, f'Total {CONSTELLATIONS.totSat:.0f} sat.')
+    cpLib.azlab(ax,x,y, f'Total {CONSTELLATIONS.totSat:.0f} sat.')
 
     #bottom right
     x = 1.
     y = -1.08 -dy
     if 1:
         lab = "Satellite magnitudes: V$_{550km}=$" +\
-            f'{cst.mag550:3.1f}' 
+            f'{caCst.mag550:3.1f}' 
 #            "{:3.1f}".format(cst.mag550 -5.*np.log10(550./1000.) )
-        cp.azlab(ax,x,y,lab)
+        cpLib.azlab(ax,x,y,lab)
         y -= dy
 
     if mageffmin < -1000. or myargs.code == "skyMag":
@@ -610,29 +602,29 @@ if myargs.labelplotflag:
               "  V$_{eff}$"+" in [{:.1f}, {:.1f}]".format(mageffmax,mageffmin)
 
 
-    cp.azlab(ax,x,y,lab)
+    cpLib.azlab(ax,x,y,lab)
     y -= dy
 
     if myargs.magSelect == "BRIGHT":
-        cp.azlab(ax,x,y,selectionLab)
+        cpLib.azlab(ax,x,y,selectionLab)
     elif myargs.magSelect == "OBS":
         wlab = "Selection: mag$_{eff}$ < "+"{:.1f}".format(myTel.maglim)
-        cp.azlab(ax,x,y,wlab)
+        cpLib.azlab(ax,x,y,wlab)
     elif myargs.magSelect == "FAINT":
-        cp.azlab(ax,x,y,"Selection: mag > {:.0f}".format(myTel.magbloom))
+        cpLib.azlab(ax,x,y,"Selection: mag > {:.0f}".format(myTel.magbloom))
     elif myargs.magSelect == "EFFECT":
-        cp.azlab(ax,x,y,"Selection: all satellites, scaled for effect")
+        cpLib.azlab(ax,x,y,"Selection: all satellites, scaled for effect")
         wlab = "Detected: V$_{eff}$ < "+"{:.1f} ".format(myTel.maglim)
         wlab += "   Bleeding: V$_{eff}$ < "+"{:.1f}".format(myTel.magbloom)
         y -= dy
-        cp.azlab(ax,x,y,wlab)
+        cpLib.azlab(ax,x,y,wlab)
 
 
     
 # sat count on almucantars
 if myargs.almucantar and myargs.plotflag:
     for we, wi in zip(elLim, elCount):
-        cp.azlab(ax,-0,(90.-we-5)/90.,'{:.0f} sat.>{:.0f}$^o$:'.format(wi,we),9,0.5*(1.-we/100.))
+        cpLib.azlab(ax,-0,(90.-we-5)/90.,'{:.0f} sat.>{:.0f}$^o$:'.format(wi,we),9,0.5*(1.-we/100.))
 
 
 # Discrete satellites as dots on the plot

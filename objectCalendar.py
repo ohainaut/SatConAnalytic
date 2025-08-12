@@ -11,8 +11,8 @@ from conanplot import gyrd
 import argparse
 
 # import ConAn routines
-import conan as ca
-import conanplot as cp
+import conan as caLib
+import conanplot as cpLib
 
 
 #outpath = "/home/ohainaut/public_html/outsideWorld/"
@@ -58,13 +58,13 @@ objlabel = myargs.objlabel
 
 #- find telescope
 print('TELESCOPE/INSTRUMENT SETUP')
-myTel = cp.getTelescope(myargs)
+myTel = cpLib.getTelescope(myargs)
 print(myTel)
 
 #---
 
 # satellites
-CONSTELLATIONS = ca.findConstellations(myargs.constellation)
+CONSTELLATIONS = caLib.findConstellations(myargs.constellation)
 print('CONSTELLATIONS:')
 print(CONSTELLATIONS.ToC)
 print()
@@ -81,14 +81,14 @@ for i in range(365):
 lst = (280.46061837 + 360.98564736629*(times -2451545.0) )%360
 
 # sun coordinates
-walphas, deltas = ca.get_sun(times)
+walphas, deltas = caLib.get_sun(times)
 alphas = lst - walphas # alphas is the HA
-elevs = ca.radec2elev(alphas,deltas,myTel.lat)
+elevs = caLib.radec2elev(alphas,deltas,myTel.lat)
 
 
 # object coordinates to Az,Elevation
 hao = lst - rao # we work in hour angle
-AzEl = np.array( ca.radec2azel(hao,deo,myTel.lat))
+AzEl = np.array( caLib.radec2azel(hao,deo,myTel.lat))
 
 
 densSatAll = np.zeros_like(AzEl[0])
@@ -105,14 +105,11 @@ mageffmin = 99.
 for myShell in CONSTELLATIONS.shells:                 
     # process each shell
 
-    densSi, veli, magi =  ca.modelOneConstMag(AzEl,myTel.lat, 
-                            np.reshape(alphas,alphas.shape[0]*alphas.shape[1]),
-                            np.reshape(deltas,deltas.shape[0]*deltas.shape[1]),
-                            myShell.inc,
-                            myShell.alt, 
-                            myShell.totSat
-                            )
-    
+    densSi, veli, magi =  myShell.modelOneShell(
+        AzEl,myTel.lat, 
+        np.reshape(alphas,alphas.shape[0]*alphas.shape[1]),
+        np.reshape(deltas,deltas.shape[0]*deltas.shape[1])  )
+
     # all sat:
     densSatAll += densSi
     densVelAll += densSi * veli
@@ -200,7 +197,8 @@ lsat = np.log10(dens+1.e-10)
 lsat = lsat + np.log( elevs < 0 )
 
 #- fill in the satellites
-csat = ax.contourf(lsat, levels=np.arange(lvmin,lvmax,.01) , cmap=cmap, extend='both')
+csat = ax.contourf(lsat, levels=np.arange(lvmin,lvmax,.01) , 
+                   cmap=cmap, extend='both')
 csat.cmap.set_under('k') # below minimum -> black
 
 #- unobservable
@@ -214,7 +212,8 @@ lobj = plt.clabel(cobj, fmt='%.0f$^o$')
 
 #- daylight
 for myElevMin, myAlpha  in zip([-18., -12., -6., 0.], [.3,.3,.5,1.]):
-    ax.contourf(elevs, levels=[myElevMin,90.], colors='royalblue', alpha=myAlpha)
+    ax.contourf(elevs, levels=[myElevMin,90.], 
+                colors='royalblue', alpha=myAlpha)
 
 #- twilightss
 csun = ax.contour(elevs, levels=[-18.,-12.,-6.,0],

@@ -13,6 +13,28 @@ from astropy.io import ascii
 import constants 
 import constellations
 
+#---------------------------------------------------------------------------
+def consolidate_sun(sunAlpha, sunDelta, sunElev, lat):
+    ''' using two available parameters of the sun, get the 3rd one.
+    
+    IN:
+    - sunAlpha: HourAngle of the Sun [deg], or None
+    - sunDelta: Dec of the sun [deg]
+    - sunElev: MINUS elevation of the sun [deg], or None.
+    
+    OUT:
+    - sunAlpha, sunDelta, sunElev'''
+
+    sunDelta = float(sunDelta)
+
+    if sunAlpha is None:
+        sunElev = -float(sunElev)
+        sunAlpha = elev2ra(sunElev,sunDelta,lat) # get sun hourangle for twilight
+    else:
+        sunAlpha = float(sunAlpha)
+        sunElev = radec2elev(sunAlpha,sunDelta,lat)
+
+    return sunAlpha, sunDelta, sunElev
 
 
 #---------------------------------------------------------------------------
@@ -147,7 +169,7 @@ def integrateSat(ElLim, AzEl, density ):
     '''count the total number of satellites above an elevation
 
     IN
-    - ElLims: vector of the elevetions above which we want the sat counts [deg]
+    - ElLims: LIST of the elevations above which we want the sat counts [deg]
       The elevations are expected to come sorted by decreasing values (eg [60, 40, 20])
     - AzEl: matrix of Az and El
     - density: n density of satellites over the AzEl matrix
@@ -602,89 +624,3 @@ def mag2microcd(mag):
 #-------------------------------------------------------------------------
 
 
-
-
-
-
-def modelOneConstMag(AzEl,obsLatitude, sunAlpha,sunDelta,
-                     satInc,satAlt,num ):
-    '''Model one single shell over a set of Az,El pointings
-    IN
-    - AzEl: mesh of [Azimuths,  Elevation]   [deg]
-            on which the constellation shall be evaluated. 
-    - obsLatitude: latitude of the observer [deg]
-    - sunAlpha, sunDelta: HourAngle and Dec. of the Sun [deg]
-    - satInc, satAlt, num: parameters of the satellite constellation shell:
-      - satInc: inclination [deg]
-      - satAlt: altitude [km]
-      - num: number of satellites in the shell
-    
-    OUT
-    - illuminated satellite number density (same shape as AzEl)
-    - illuminated satellite apparent angular velocity (same shape as AzEl)
-    - illuminated satellite magnitudes
-    '''
-
-    # sun az, el (not used)
-    # sunAzimuth,sunElevation = radec2azel(sunAlpha,sunDelta, obsLatitude)
-    
-    if len(AzEl.shape) == 3:
-        AzElreshape = np.reshape(AzEl,(2,AzEl.shape[1]*AzEl.shape[2]))
-        step = AzEl[1,1,0] - AzEl[1,0,0]
-    else:
-        AzElreshape = AzEl
-        step = 1.
-        
-    # geocentric equ. alpha,delta of sat, and   observatory dist, angle 
-    alpha, delta, Delta, costheta = AltAz2Delta(obsLatitude,satAlt,AzElreshape)
-    
-    # geocentric equ. rect. of satellite
-    xyz = RaDecAlt2xyz(alpha,delta, satAlt)
-
-    # Velocities
-    wAngularVel = AzEl2Vel(alpha, delta, Delta,obsLatitude,satInc,satAlt)  
-    
-    #Density    
-    # get delta of top of field of view
-    wAzEl = np.copy(AzElreshape)
-    wAzEl[1] += step
-    _, deltaTop, _, _ = AltAz2Delta(obsLatitude,satAlt,wAzEl)
-
-    # get delta of bottom of field
-    wAzEl = np.copy(AzElreshape)
-    wAzEl[1] -= step
-    _, deltaBot, _, _ = AltAz2Delta(obsLatitude,satAlt,wAzEl)
-
-    # density at this place; 
-    #         adjust angular size
-    #         for distance, and
-    #         for apparent orientation of the shell on line-of-sight
-    densitys = satNumDensity(deltaBot, deltaTop,satInc,num) \
-                   * (Delta/(constants.earthRadius+satAlt))**2 / costheta 
-
-    # Illuminated satellites
-    illum = solIllum(xyz,sunAlpha, sunDelta)
-    wdensityi = densitys * illum
-
-    #  MAGNITUDE of the satellites:
-
-    wmag =  constants.mag550 + 5.*np.log10(Delta/550.)  # distances
-    wmag += constants.extinction*(Delta/satAlt -1.)    # extinction
-
-    ## ZTF brightnening
-    # deltaAzs = np.cos(np.radians( AzEl[0] - azs ))
-    # mag = 1-np.degrees(np.arccos(DeltaAzs))/constants.ZTFmagAzCut 
-    # mag[Dmag < 0] = 0.
-    ##    experimental elevation function: peaks when angle(Sat,sun)=45deg
-    # el = AzEl[1] - els
-    # el[Del>90] = 0.
-    # Del = 1-((Del-constants.ZTFmagAngPeak)/constants.ZTFmagAngPeak)**2
-    # wmag += Dmag*Del*constants.ZTFmagAzBright     # ZTF brightening
-    
-    return \
-        np.reshape(wdensityi,   (AzEl.shape[1],AzEl.shape[2]) ) ,\
-        np.reshape(wAngularVel, (AzEl.shape[1],AzEl.shape[2]) ),\
-        np.reshape(wmag,        (AzEl.shape[1],AzEl.shape[2]) )
-    
-
-#

@@ -8,7 +8,7 @@ ploting functions supporting conAn
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker
-import conan as ca
+import conan as caLib
 import telescopes
 
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
@@ -28,7 +28,6 @@ csunmap = LinearSegmentedColormap.from_list("mycmap", colors)
 
 
 #------------------------------------------------------------------------------
-
 def getTelescope(myargs):
     '''return the Telescope object requested by myargs.code
     
@@ -53,6 +52,8 @@ def getTelescope(myargs):
         'lat'
     ]:
         if myargs.__dict__[what] is not None:
+            print('WHAT', what)
+            print(myargs.__dict__[what])
             myTel.__dict__[what] = float(myargs.__dict__[what])
 
 
@@ -70,6 +71,7 @@ def getTelescope(myargs):
 
     return myTel
 
+#------------------------------------------------------------------------------
 def findTelescope(telinslabel):
     allTel = telescopes.readTelescopes()
     try:
@@ -184,7 +186,7 @@ def drawHADec(lat):
     HAdef = np.arange(-12.,12.01)*15.
     Decdef = np.arange(-90.,91.,1.)
     for i in np.arange(0,len(HAdef)):
-        azs,els = ca.radec2azel(HAdef[i], Decdef, lat)
+        azs,els = caLib.radec2azel(HAdef[i], Decdef, lat)
         az = azs[els>0]
         el = els[els>0]
         plt.plot(np.radians(az), 90.- el, lw=corl, c=corc)
@@ -192,7 +194,7 @@ def drawHADec(lat):
     #label RA
     Dec = 0.
     HAdef = np.arange(-12.,12.01,3.)
-    az,el = ca.radec2azel(HAdef*15., Dec, lat)
+    az,el = caLib.radec2azel(HAdef*15., Dec, lat)
     for i in np.arange(0,len(HAdef)):
         if el[i] > 0. :
             plt.text(np.radians(az[i]),90. -el[i],'{:.0f}'.format(HAdef[i]), color=corc, fontsize=10)
@@ -201,7 +203,7 @@ def drawHADec(lat):
     HAdef = np.arange(-12.,12.01,0.1)*15.
     Decdef = np.arange(-90.,91.,10.)
     for i in np.arange(0,len(Decdef)):
-        azs,els = ca.radec2azel(HAdef, Decdef[i], lat)
+        azs,els = caLib.radec2azel(HAdef, Decdef[i], lat)
         az = azs[els>0]
         el = els[els>0]
         if Decdef[i] == 0.:
@@ -213,7 +215,7 @@ def drawHADec(lat):
     #label Dec
     HA = 0.
     Decdef = np.arange(-60.,61.,30.)
-    az,el = ca.radec2azel(HA, Decdef, lat)
+    az,el = caLib.radec2azel(HA, Decdef, lat)
     for i in np.arange(0,len(Decdef)):
         if el[i] > 0. :
             plt.text(np.radians(az[i]),90.-el[i],'{:.0f}$^\circ$'.format(Decdef[i]), color=corc, fontsize=10)

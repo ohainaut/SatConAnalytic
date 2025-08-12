@@ -21,8 +21,8 @@ from conanplot import gyrd
 
 
 # import ConAn routines
-import conan as ca
-import conanplot as cp
+import conan as caLib
+import conanplot as cpLib
 import constants
 import debris
 
@@ -99,7 +99,7 @@ myargs.fovw = 1.
 myargs.maglim = 99.
 myargs.magbloom = 99.
 myargs.trailf = 1.
-myTel = cp.getTelescope(myargs)
+myTel = cpLib.getTelescope(myargs)
 print(myTel)
 
 #-------------------------------------------------------------------------------------
@@ -110,10 +110,10 @@ print(myTel)
 sunDelta =  float(myargs.deltaSun)
 sunElev  = -float(myargs.elevSun)
 if myargs.alphaSun is None:
-    sunAlpha = ca.elev2ra(sunElev,sunDelta,myTel.lat) # get sun hourangle for twilight
+    sunAlpha = caLib.elev2ra(sunElev,sunDelta,myTel.lat) # get sun hourangle for twilight
 else:
     sunAlpha = float(myargs.alphaSun)
-    sunElev = ca.radec2elev(sunAlpha,sunDelta,myTel.lat)
+    sunElev = caLib.radec2elev(sunAlpha,sunDelta,myTel.lat)
 
 
 print('SUN:')
@@ -121,7 +121,7 @@ print(f'\tLocal time: {((180+sunAlpha)/15.)%24:.2f}h')
 print(f'\tHA = {sunAlpha:.1f}deg  = {(sunAlpha/15.)%24:.2f}h, Dec = {sunDelta:.1f}d')
 print(f'\tElevation: {sunElev:.2f}d')
 
-wAz, wEl = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
+wAz, wEl = caLib.radec2azel(sunAlpha, sunDelta, myTel.lat)
 print(f'Validation: sun az= {wAz:.2f}, el= {wEl:.2f}d\n')
 
 
@@ -143,7 +143,7 @@ print('Number of altitude shells:',len(DEBRIS))
 
 
 # Azimut-Elevation mesh
-AzEl = ca.fill_AzEl(step)
+AzEl = caLib.fill_AzEl(step)
 AzEl_r = np.reshape(AzEl,(2,AzEl.shape[1]*AzEl.shape[2]))
    # all *_r are "reshaped"
 
@@ -223,74 +223,74 @@ fluxRatio = fluxDebris / fluxSky
 
 fig = plt.figure(figsize=(8,8))
 ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'})
-cp.initPolPlot(ax)
+cpLib.initPolPlot(ax)
 ax.set_facecolor("k")
 nTick = 9
 
 if myargs.mode == "skyMag":
     plotit = -magSky 
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_negMag(plotit)
     barLabel = "Sky background [Mag/arcsec$^2$]"
     zenithLabel =''
-    cmap = cp.csunmap
+    cmap = cpLib.csunmap
     showDebrisLabel = False
 
 if myargs.mode == "skyFlux":
     plotit = -magSky 
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_negMag(plotit)
 
     # for the unit conversion, we change the labels:
-    barTickLabels = [f'{w:.0f}' for w in ca.mag2microcd(-barTicks)] #barTicks is -mag
+    barTickLabels = [f'{w:.0f}' for w in caLib.mag2microcd(-barTicks)] #barTicks is -mag
     barLabel = "Surface brightness [$\mu$cd/m$^2$]"
 
-    zenithLabel =f'Sky flux: {ca.mag2microcd(magSky[-1,0]):.1f} $\mu$cd/m$^2$' 
-    cmap = cp.csunmap
+    zenithLabel =f'Sky flux: {caLib.mag2microcd(magSky[-1,0]):.1f} $\mu$cd/m$^2$' 
+    cmap = cpLib.csunmap
     showDebrisLabel = False
 
 elif myargs.mode == "debrisMag":
     plotit = -magDebris
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_negMag(plotit)
     barLabel = "Debris [Mag/arcsec$^2$]"
-    cmap = cp.csunmap
+    cmap = cpLib.csunmap
     showDebrisLabel = True
     zenithLabel =f'Debris Mag: {-plotit[-1,0]:.1f} mag/arcsec$^2$)' 
         
 elif myargs.mode == "totalMag":
     plotit = -magTotal
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_negMag(plotit)
     barLabel = "Sky+Debris [Mag/arcsec$^2$]"
-    cmap = cp.csunmap
+    cmap = cpLib.csunmap
     showDebrisLabel = True
     zenithLabel =f'Total Mag: {-plotit[-1,0]:.1f} mag/arcsec$^2$)' 
 
 
 elif myargs.mode == "debrisFlux":
     plotit = -magDebris
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_negMag(plotit)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_negMag(plotit)
     
     # for the unit conversion, we change the labels:
-    barTickLabels = [f'{w:.2g}' for w in ca.mag2microcd(-barTicks)] #barTicks is -mag
+    barTickLabels = [f'{w:.2g}' for w in caLib.mag2microcd(-barTicks)] #barTicks is -mag
     barLabel = "Surface brightness [$\mu$cd/m$^2$]"
-    cmap = cp.csunmap
+    cmap = cpLib.csunmap
     showDebrisLabel = True
-    zenithLabel =  f'Flux: Debris= {ca.mag2microcd(magDebris[-1,0]):.2f}, ' 
-    zenithLabel += f'Sky= {ca.mag2microcd(magSky[-1,0]):.0f} $\mu$cd/m$^2$' 
+    zenithLabel =  f'Flux: Debris= {caLib.mag2microcd(magDebris[-1,0]):.2f}, ' 
+    zenithLabel += f'Sky= {caLib.mag2microcd(magSky[-1,0]):.0f} $\mu$cd/m$^2$' 
 
 
 elif myargs.mode == "debrisCount":
     plotit = np.log10(countDebris)
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(plotit)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(plotit)
     barLabel = "Debris [N/deg$^2$]"
-    cmap = cp.csunmap
+    cmap = cpLib.csunmap
     showDebrisLabel = True
     zenithLabel =f'Debris count: {10.**plotit[-1,0]:.1g} grain/sq.deg' 
 
 elif myargs.mode == "ratio":
     plotit = np.log10(fluxRatio)
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(plotit)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(plotit)
     barLabel = "Debris flux/Sky flux "
-    cmap = cp.gyrd
-    cmap = cp.csunmap
+    cmap = cpLib.gyrd
+    cmap = cpLib.csunmap
 
     showDebrisLabel = True
     wpc = 10**(-0.4*(magDebris[-1,0] - magSkyZenith))*100.
@@ -299,10 +299,10 @@ elif myargs.mode == "ratio":
 
 elif myargs.mode == "surface":
     plotit = np.log10( np.reshape(surface_r,(AzEl.shape[1],AzEl.shape[2]) ) )
-    barTicks, barTickLabels, logMinValue, logMaxValue = cp.setBarLim_standardLog(plotit)
+    barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(plotit)
     
     barLabel = f'Surface [km2] for a {step**2} sq.deg at alt={satAlt:.0f}km '
-    cmap = cp.csunmap
+    cmap = cpLib.csunmap
 
     showDebrisLabel = False
     zenithLabel =f'Surface: {10.**plotit[-1,0]:.1f} km$^2$/sq.deg' 
@@ -337,7 +337,7 @@ if 1:
 
 #------------------------------------------------------------------------------
 # RA Dec lines
-cp.drawHADec(myTel.lat)
+cpLib.drawHADec(myTel.lat)
 
 
 #----------------------------------------------------------
@@ -348,7 +348,7 @@ cp.drawHADec(myTel.lat)
 if 1:
 
     #Sun
-    azs,els = ca.radec2azel(sunAlpha, sunDelta, myTel.lat)
+    azs,els = caLib.radec2azel(sunAlpha, sunDelta, myTel.lat)
     plt.text(np.radians(azs), 93.,r'$\odot$', va="center", ha='center') # raw string for LaTeX
 
 
@@ -357,7 +357,7 @@ if 1:
     y = 1.2
     dy = 0.08
 
-    cp.azlab(ax,x,y,'Observatory: {} Lat.: {:.1f}$^o$'.format(myTel.telescope, myTel.lat))
+    cpLib.azlab(ax,x,y,'Observatory: {} Lat.: {:.1f}$^o$'.format(myTel.telescope, myTel.lat))
     y -= dy
 
 
@@ -369,22 +369,22 @@ if 1:
     if showDebrisLabel:
 
         mylabel = f'Debris: Size: $10^{{ {-radmin:.0f} }}$ .. $10^{{ {-radmax+1:.0f} }}$ m' # {{: escaped {
-        cp.azlab(ax,x,y,mylabel,14)
+        cpLib.azlab(ax,x,y,mylabel,14)
         y -= dy
 
-        cp.azlab(ax,x,y,f'Altitude: {min(DEBRIS["alt"]):.0f} .. {max(DEBRIS["alt"]):.0f} km')
+        cpLib.azlab(ax,x,y,f'Altitude: {min(DEBRIS["alt"]):.0f} .. {max(DEBRIS["alt"]):.0f} km')
         y -= dy
 
         DEBRIS['surface'] = 4.*np.pi* (constants.earthRadius + DEBRIS['alt'])
         totalMass = sum( DEBRIS['surf_m']* DEBRIS['surface'])*multiplicationFactor
-        cp.azlab(ax,x,y,f'Total mass: {totalMass:.2e} kg')
+        cpLib.azlab(ax,x,y,f'Total mass: {totalMass:.2e} kg')
         y -= dy
 
-        cp.azlab(ax,x,y,f'= {multiplicationFactor:.1e} x today')
+        cpLib.azlab(ax,x,y,f'= {multiplicationFactor:.1e} x today')
         y -= dy
 
 
-        cp.azlab(ax,x,y,f'Albedo: {debris.p_albedo:.2f}')
+        cpLib.azlab(ax,x,y,f'Albedo: {debris.p_albedo:.2f}')
         y -= dy
 
 
@@ -394,28 +394,28 @@ if 1:
     # bottom left
     x= -1.
     y= -1.08
-    cp.azlab(ax,x,y,r'$\odot$ Sun:',14)
+    cpLib.azlab(ax,x,y,r'$\odot$ Sun:',14)
 
     y -= dy
     loct = (sunAlpha/15.+12.)%24
 
     loch = int(loct)
     locm = int( (loct-loch)*60.)
-    cp.azlab(ax,x,y,f'Loc.time: {loch:02d}:{locm:02d}')
+    cpLib.azlab(ax,x,y,f'Loc.time: {loch:02d}:{locm:02d}')
     y -= dy
-    cp.azlab(ax,x,y,r'$\delta: '+f'{sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
+    cpLib.azlab(ax,x,y,r'$\delta: '+f'{sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
     y -= dy
 
 
     # bottom right
     x= 1.
     y= -1.08
-    cp.azlab(ax,x,y,f'Zenith: ',14)
+    cpLib.azlab(ax,x,y,f'Zenith: ',14)
     
     y -= dy
-    cp.azlab(ax,x,y,f'Sky brightness: {magSkyZenith:.1f} mag/sq.arcsec')
+    cpLib.azlab(ax,x,y,f'Sky brightness: {magSkyZenith:.1f} mag/sq.arcsec')
     y -= dy
-    cp.azlab(ax,x,y,zenithLabel)
+    cpLib.azlab(ax,x,y,zenithLabel)
 
 
 
