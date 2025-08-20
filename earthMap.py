@@ -31,7 +31,7 @@ elLim = np.array([60.,30.,20., 10.,0.])
 
 # resolution for the scanning of the Earth [deg]
 #  1: ideal;   10: fast; 30: debug
-groundStep = 3. # [deg]
+groundStep = 2. # [deg]
 
 # resolution for the scanning of the sky [deg]
 # 1: production, slow;  3 ok-ish debug; 5-30: quick-and-dirty debug
@@ -352,7 +352,7 @@ if 1:
     SAT["longr"] = SAT["longr"] -np.pi
     SAT["xPt"], SAT["yPt"]  = m(np.degrees(SAT["longr"]), np.degrees(SAT["latr"] ))
     m.scatter(SAT["xPt"], SAT["yPt"], c=SAT["bIlluminated"] , 
-              cmap='YlOrRd_r',marker='.', s=1, alpha=0.25)
+              cmap='YlOrRd_r',marker='.', s=1, alpha=0.75)
 
 
 m.drawcoastlines(linewidth=0.5, color='g')# Sun and twilights

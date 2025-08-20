@@ -788,6 +788,20 @@
         }
     },
     {
+        "name" : "OneWeb (as of Aug 2025)",    
+        "comment" : "OneWeb 1st Generation Fully Deployed", 
+        "code" : "OW1gen",                             
+        "shells" : {       
+            "cow" : {                
+                "label":"OW2 A",
+                "totSat": 648,   
+                "nPlane": 12,        
+                "nSat"  : 54,       
+                "inc"   : 87.9,     
+                "alt"   : 1200.0}
+        }
+    },
+    {
         "name" : "Starlink and ONEWEB 2022-APR",
         "code" : "2022const",
         "shells" : {
