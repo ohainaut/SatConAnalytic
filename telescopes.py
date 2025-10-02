@@ -9,6 +9,7 @@
 
 import logging
 import json
+import os
 
 class _Dict(dict):
     '''convenience: access dict as dict.element.element'''
@@ -17,9 +18,17 @@ class _Dict(dict):
     __delattr__= dict.__delitem__
 
 def readTelescopeFile(myFile):
-     '''read constellation json file'''
-     with open(myFile) as infile:
-          return json.load(infile, object_hook=_Dict)
+     '''read telescope json file'''
+     try:
+          # Try to open the file as provided (local file or absolute path)
+          with open(myFile) as infile:
+               return json.load(infile, object_hook=_Dict)
+     except FileNotFoundError:
+          # If file not found, try to locate it in the same directory as this script
+          script_dir = os.path.dirname(os.path.abspath(__file__))
+          fallback_path = os.path.join(script_dir, myFile)
+          with open(fallback_path) as infile:
+               return json.load(infile, object_hook=_Dict)
 
 
 

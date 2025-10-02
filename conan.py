@@ -78,19 +78,32 @@ def findConstellations(constellationsll):
     out: a Constellations object
     '''
 
-    if   constellationsll == 'SL' :  constellationsll = ['SL1', 'SL2']
-    elif constellationsll == 'OW' :  constellationsll = ['OW2r']
-    elif constellationsll == 'SLOW' :  constellationsll = ['SL1', 'SL2','OW2r']
-    elif constellationsll == 'TODAY':constellationsll = ['YESTURDAY', 'TODAYconst']
-    elif constellationsll == 'SLOWGWAK':constellationsll = ['YESTURDAY',
-                                                            'SL1','SL2',
-                                                            'OW2r',
-                                                            'GW',
-                                                            'AK' ]
-    elif constellationsll == 'ALL' :  constellationsll = ['YESTURDAY',
-                                                          'SL1', 'SL2', 
-                                                          'OW2r', 
-                                                          'GW', 'AK', 'ESP']
+    metaConstellations = {
+        'SL': ['SL1', 'SL2'],
+        'OW': ['OW2r'],
+        'SLOW': ['SL1', 'SL2','OW2r'],
+        'TODAY': ['YESTURDAY', 'TODAYconst'],
+        'SLOWGWAK': ['YESTURDAY',
+                    'SL1','SL2',
+                    'OW2r',
+                    'GW',
+                    'AK' ],
+        'ALL': ['YESTURDAY',
+                'SL1', 'SL2', 
+                'OW2r', 
+                'GW', 'AK', 'ESP']
+    }
+
+    if   constellationsll == 'list' :  
+        print(constellations.readConstellations())
+        print("=============================================================")
+        print("Available preset constellation groups:")
+        for c in metaConstellations:
+            print(f'  {c}: {metaConstellations[c]}')
+            
+        exit(0)
+    elif constellationsll in metaConstellations:
+        constellationsll = metaConstellations[constellationsll]
     else:
         constellationsll = [ constellationsll ]
 

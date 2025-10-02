@@ -77,8 +77,12 @@ def findTelescope(telinslabel):
     try:
         return allTel.byCode[telinslabel]
     except KeyError:
-        raise KeyError(f'{telinslabel} not in {allTel.list}')
-
+        if telinslabel != 'list':
+            print(f'{telinslabel} not found in telescope list')
+        print('Available telescopes are:')
+        for x in sorted(allTel.list):
+            print(f'  {x}')
+        exit(1)
 
 
 

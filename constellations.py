@@ -10,7 +10,7 @@
 #
 
 
-import logging, json
+import logging, json, os
 import numpy as np
 from astropy.table import Table
 import random
@@ -32,8 +32,16 @@ class _Dict(dict):
 #----------------------------------------------------------------------------
 def readConstellationFile(myFile):
      '''read constellation json file'''
-     with open(myFile) as infile:
-          return json.load(infile, object_hook=_Dict)
+     try:
+          # Try to open the file as provided (local file or absolute path)
+          with open(myFile) as infile:
+               return json.load(infile, object_hook=_Dict)
+     except FileNotFoundError:
+          # If file not found, try to locate it in the same directory as this script
+          script_dir = os.path.dirname(os.path.abspath(__file__))
+          fallback_path = os.path.join(script_dir, myFile)
+          with open(fallback_path) as infile:
+               return json.load(infile, object_hook=_Dict)
 
 #----------------------------------------------------------------------------
 class OneShell():
@@ -188,8 +196,10 @@ class Constellation():
 
           self.totSat =  sum( s.totSat for s in self.shells)
           self.totShells = len( self.shells )
-          self.ToC = (f'\n-----------------------------------------------------------'+
-                      f'\n"{self.name}"\t {self.totSat} sat, {self.totShells} shells')
+          self.ToC = (
+               f'\n"{self.name}"\t {self.totSat} sat, {self.totShells} shells'+
+               f'\n-----------------------------------------------------------'
+               )
 
           self.vintageTable = [[
                          s.label,
@@ -202,7 +212,8 @@ class Constellation():
 
 
      def __repr__(self):
-          msg = self.ToC
+          msg =  '\n======================================================='
+          msg += self.ToC
           for s in self.shells:
                msg += f'\n    {s.label}: \tN= {s.totSat}  '
                msg += f'\ta= {s.alt}km \ti= {s.inc}deg'
@@ -233,6 +244,7 @@ class Constellations():
           self.totSat = sum(  self.byCode[c].totSat for c in self.list   )
           self.totShells = sum(  self.byCode[c].totShells for c in self.list   )
           self.totConst = len(self.list)
+          
           self.ToC =  '\n'.join( [ f'{c} :\t {self.byCode[c].ToC} ' for c in self.list ])
           self.ToC += f'\nTotal N={self.totSat} satellites'
           self.ToC += f'\nover  S={self.totShells} shells'
@@ -266,6 +278,9 @@ def metaConstellation( cList, myConst=readConstellations() ):
      try:
           return Constellations( [ myConst.byCode[c] for c in cList])
      except KeyError:
+          if cList[0] == 'list':
+               return myConst
+
           cError = [c for c in cList if c not in myConst.list]
           print(f'{cError} not in constellation list')
           print( myConst)

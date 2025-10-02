@@ -790,7 +790,7 @@
     {
         "name" : "OneWeb (as of Aug 2025)",    
         "comment" : "OneWeb 1st Generation Fully Deployed", 
-        "code" : "OW1gen",                             
+        "code" : "OW1xxgen",                             
         "shells" : {       
             "cow" : {                
                 "label":"OW2 A",
