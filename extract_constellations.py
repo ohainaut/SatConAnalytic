@@ -177,7 +177,7 @@ def create_dataframe_for_constellation_sundelta(data, target_constellation, targ
     
     return df
 
-def plot_efftot_vs_localtime(data, constellation, sundelta, ax=None, my_color='blue', indexes=[0,1,2]):
+def plot_efftot_vs_localtime(data, constellation, sundelta, ax=None, my_color='blue', indexes=[0,1,2], marker=None):
     """Plot EffTot_0, EffTot_1, EffTot_2 vs localTime for a given constellation and sunDelta
     
     Args:
@@ -216,7 +216,7 @@ def plot_efftot_vs_localtime(data, constellation, sundelta, ax=None, my_color='b
             label = f'{constellation} {df[f"aircut_{icol}"].iloc[0]:.0f}°' if f'aircut_{icol}' in df.columns else f'EffTot_{icol}'
             ax.plot(df['localTime'], df[col], 
                     color=my_color, alpha=alphas[icol], 
-                    #marker='o', 
+                    marker=marker, 
                     linestyle='-', linewidth=1, label=label)
     
     # Also plot zenith densities in red if available
@@ -256,8 +256,9 @@ def plot_efftot_vs_localtime(data, constellation, sundelta, ax=None, my_color='b
                 #ax.axvline(x=x_cross, color='blue', alpha=0.3, linestyle='--', linewidth=1)
                 ax.fill_betweenx([-maxy**0.05, 1.], 0., x_cross, color='blue', alpha=0.1)
 
-                ax.text(x_cross, 1e-4, f'{elev}°', rotation=90, verticalalignment='bottom', 
-                       color='blue', alpha=0.7, fontsize=9)
+                #ax.text(x_cross, 1e-4, f'{elev}°', rotation=90,     
+                #        verticalalignment='bottom', 
+                #        color='blue', alpha=0.7, fontsize=9)
     
     # Formatting
 
@@ -406,7 +407,7 @@ def plot_efftot_constellations(data, sundelta, efftot_index=0, constellation_pat
                 # Plot vertical lines at crossings
                 for x_cross in crossings:
                     ax.fill_betweenx([0, 1], 0., x_cross, color='blue', alpha=0.1)
-                    ax.text(x_cross, 2e-5, f'{elev}°', rotation=90,     
+                    ax.text(x_cross, 1e-4, f'{elev}°', rotation=90,     
                             verticalalignment='bottom', 
                             color='blue', alpha=0.7, fontsize=9)
             break  # Only need to do this once
@@ -606,10 +607,17 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
                 # Plot vertical lines at crossings
                 for x_cross in crossings:
                     ax.fill_betweenx([0, 1], 0., x_cross, color='blue', alpha=0.1)
-                    ax.text(x_cross, 1e-4, f'{elev}°', rotation=90, verticalalignment='top', 
+                    ax.text(x_cross, 1e-4, f'{elev}°', rotation=90, verticalalignment='bottom', 
                            color='blue', alpha=0.7, fontsize=9)
             break  # Only need to do this once
     
+
+    # shade the effect
+    ax.fill_betweenx([1e-2, 1], 0., 24., color='red', alpha=0.05)
+    ax.fill_betweenx([1e-3, 1e-2], 0., 24., color='orange', alpha=0.05)
+    ax.fill_betweenx([1e-4, 1e-3], 0., 24., color='yellow', alpha=0.05)
+    ax.fill_betweenx([1e-8, 1e-4], 0., 24., color='green', alpha=0.05)
+
     # Formatting
     ax.set_xlabel('Local Time [hours]')
     ax.set_ylabel('Fraction of frames with trails')
@@ -643,7 +651,7 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
 #============================================================================
 # Main demonstration function
 #============================================================================
-def demo():
+def demo(my_constellation=None):
     json_file = "/home/ohainaut/Dropbox/ohainaut/Documents/ESO/E2E/SatelliteConstellations/SIMULATIONS/Eutelsat/obsSky_batch_results_fullOWeq.json"
     
     print("DEMO")
@@ -683,7 +691,6 @@ def demo():
     # For one constellation and and 3 sunDelta values:
     if 1:
         #my_constellation = 'OW1gen'
-        my_constellation = 'OW_12_9_2'
         sundelta_values = extract_sundelta_for_constellation(data, my_constellation)
         print(f"\nConstellation '{my_constellation}' has {len(sundelta_values)} unique sunDelta values: {sorted(sundelta_values)}"  )
 
@@ -734,7 +741,7 @@ def demo():
                 # Create the plot
                 plot_efftot_vs_localtime(data, my_constellation, my_sundelta, ax)
 
-                ax.set_ylim(5e-5, 5e-2)
+                ax.set_ylim(5e-5, 2e-1)
                 ax.set_yscale('log')
                 ax.text(17.,1e-4, f'Sun Declination: {my_sundelta}°')
 
@@ -749,7 +756,7 @@ def demo():
         print(f"Constellation comparison plot saved as: {comparison_filename}")
 
         # Optionally show the plot
-        plt.show()
+        #plt.show()
                 
 
     if 0:
@@ -800,8 +807,15 @@ def demo():
 #==============================================================================
 #==============================================================================
 if __name__ == "__main__":
-    #demo()
-#if 0:
+
+    constellations = [     'OW1gen', 
+                      'OW_12_6_2', 'OW_12_6_3', 'OW_12_6_4',
+                      'OW_12_9_2', 'OW_12_9_3', 'OW_12_9_4',
+                      'OW_3_6_2', 'OW_6_6_2', 'OW_13_6_2']
+    for my_constellation in constellations:
+        demo(my_constellation=my_constellation)
+
+if 0:
     json_file = "/home/ohainaut/Dropbox/ohainaut/Documents/ESO/E2E/SatelliteConstellations/SIMULATIONS/Eutelsat/obsSky_batch_results_fullOWeq.json"
 
     data = load_json_data(json_file)
@@ -838,7 +852,7 @@ if __name__ == "__main__":
 
                 #over plot OW1gen for reference
                 extract_table_for_constellation_sundelta(data, 'OW1gen', sunDelta)
-                ax = plot_efftot_vs_localtime(data, 'OW1gen', sunDelta, ax=ax, my_color='grey', indexes=indexes)
+                ax = plot_efftot_vs_localtime(data, 'OW1gen', sunDelta, ax=ax, my_color='grey', marker="+",indexes=indexes)
 
 
                 plot_efftot_multi_index(data, sunDelta, 
@@ -850,7 +864,7 @@ if __name__ == "__main__":
                 if i == 0:
                     ax.set_title(const_label, fontsize=14)
 
-                ax.set_ylim(5e-5, 1e-2)
+                ax.set_ylim(5e-5, 2e-1)
                 ax.set_yscale('log')
             plt.tight_layout()
 

@@ -173,10 +173,13 @@ def run_single_simulation():
     return result
 
 if __name__ == "__main__":
+
+    results = OW()
+
     # Example 1: Run a single simulation
-    single_result = OW() #run_single_simulation()
+    #single_result = run_single_simulation()
     
     # Example 2: Run multiple simulations
-    # multiple_results = run_multiple_simulations()
+    multiple_results = run_multiple_simulations()
     
     print("All simulations completed!")

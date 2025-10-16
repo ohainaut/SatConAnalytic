@@ -215,6 +215,9 @@ def main(args=None):
 
     fluxSatTotal = np.zeros_like(AzEl[0])  # total flux (for all sat)  
 
+    dens = np.zeros_like(AzEl[0])          # working array for sat
+    densobs = np.zeros_like(AzEl[0])          # working array for sat
+
     magmax = -99.
     magmin = 99.
     mageffmax = -99
@@ -280,6 +283,7 @@ def main(args=None):
 
     # sat count for almucantars
     elLim = [60.,30.,20., 10.,0.]
+    
     elCount = caLib.integrateSat(elLim,AzEl,densSatAll)
             # elCount: number of sat higher than elLim
 
@@ -304,6 +308,12 @@ def main(args=None):
     #
     # PREPARE THE PLOT
     #
+
+    aircut = [0., 20., 30.] # limits at which the effects are computed
+    EffTot = np.zeros_like(aircut)
+    TrailTot = np.zeros_like(aircut)
+    surfTot = np.zeros_like(aircut)
+
 
     # select effective densities
     if  myargs.magSelect == 'BRIGHT':
@@ -413,11 +423,6 @@ def main(args=None):
 
 
         # compute average and total effect:
-
-        aircut = [0., 20., 30.]
-        EffTot = np.zeros_like(aircut)
-        TrailTot = np.zeros_like(aircut)
-        surfTot = np.zeros_like(aircut)
 
 
         for i in np.arange(0,len( AzEl[1,:,1]) ):
@@ -748,7 +753,6 @@ def main(args=None):
         plt.savefig(filename)
     #--
     print("output in ",outfileroot)
-
 
  
     results = {
