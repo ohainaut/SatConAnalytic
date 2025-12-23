@@ -5,13 +5,14 @@ ploting functions supporting conAn
 '''
 #==============================================================================
 
+from multiprocessing.util import debug
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker
-import conan as caLib
-import telescopes
+import SatConAnalytic.conan as caLib
+import SatConAnalytic.telescopes as telescopes
 
-from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+from matplotlib.colors import  LinearSegmentedColormap
 
 # color map for losses
 colors = ["black", "lawngreen", "yellow", "orange", "red", "darkred"]
@@ -29,32 +30,34 @@ csunmap = LinearSegmentedColormap.from_list("mycmap", colors)
 
 #------------------------------------------------------------------------------
 def getTelescope(myargs):
-    '''return the Telescope object requested by myargs.code
-    
+    '''return the Telescope object requested by myargs
+    The telescope is defined by the 'code' argument,
+    and then its parameters are
     overloaded with other myargs specifications.
 
     myargs is an argparse object.
     '''
-   
+
     if myargs.code is None: 
         myargs.code = 'DEFAULT'
-        
-    myTel = findTelescope(myargs.code)
 
-    
-    for what in [
-        'expt',
-        'fovl',
-        'magbloom',
-        'maglim',
-        'resol',
-        'trailf',
-        'lat'
-    ]:
-        if myargs.__dict__[what] is not None:
-            print('WHAT', what)
-            print(myargs.__dict__[what])
-            myTel.__dict__[what] = float(myargs.__dict__[what])
+    myTel = findTelescope(myargs.code)
+    debug = False
+        
+    if debug:
+        for what in [
+            'expt',
+            'fovl',
+            'magbloom',
+            'maglim',
+            'resol',
+            'trailf',
+            'lat'
+        ]:
+            if myargs.__dict__[what] is not None:
+                print('WHAT', what)
+                print(myargs.__dict__[what])
+                myTel.__dict__[what] = float(myargs.__dict__[what])
 
 
     for what in [
@@ -222,7 +225,7 @@ def drawHADec(lat):
     az,el = caLib.radec2azel(HA, Decdef, lat)
     for i in np.arange(0,len(Decdef)):
         if el[i] > 0. :
-            plt.text(np.radians(az[i]),90.-el[i],'{:.0f}$^\circ$'.format(Decdef[i]), color=corc, fontsize=10)
+            plt.text(np.radians(az[i]),90.-el[i],f'{Decdef[i]:.0f}'+r'$^\circ$', color=corc, fontsize=10)
 
 
 
@@ -274,6 +277,22 @@ def setBarLim_negMag(logDensity):
     barTickLabels = [ f'{x:.1f}' for x in -barTicks]
     
     return barTicks, barTickLabels, logMinValue, logMaxValue
+
+def setBarLim_lin(density):
+    '''prepare Bar limits, ticks and labels for a mag plot
+    The "density" is linear density (not log)   '''
+
+    logMinValue, logMaxValue = getBarLim(density)
+    bMin = np.floor( logMinValue )
+    bMax = np.ceil( logMaxValue )
+    barTicks = np.arange(bMin, bMax, .5 )
+
+    barTickLabels = [ f'{x:.1f}' for x in -barTicks]
+    
+    return barTicks, barTickLabels, logMinValue, logMaxValue
+
+
+
 
 #----
 

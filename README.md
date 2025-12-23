@@ -81,7 +81,7 @@ AK :     "Amazon Kuiper"         3236 sat, 3 shells
 GS :     "Galaxy Space  Yinhe"   1000 sat, 1 shells
 HWS :    "HanWha systems"        2000 sat, 1 shells
 LGC :    "Lynk Global cell"      2000 sat, 1 shells
-YESTURDAY :  "Today"s pre-constellation satellites (2020)"   2725 sat, 3 shells
+YESTERDAY :  "Today"s pre-constellation satellites (2020)"   2725 sat, 3 shells
 TODAYconst :     "Starlink and ONEWEB 2022-APR"  1763 sat, 2 shells
 ```
 
@@ -91,9 +91,9 @@ Some meta-constellations are available in obsplot and objplot, for convenience:
 - SL = SL1 + SL2
 - OW = OW2r
 - SLOW = SL1 + SL2 + OW2r
-- TODAY = YESTURDAY + TODAYconst
-- SLOWGWAK = YESTURDAY, SL1, SL2, OW2r, GW, AK 
-- ALL = YESTURDAY, SL1, SL2, OW2r, GW, AK, ESP
+- TODAY = YESTERDAY + TODAYconst
+- SLOWGWAK = YESTERDAY, SL1, SL2, OW2r, GW, AK 
+- ALL = YESTERDAY, SL1, SL2, OW2r, GW, AK, ESP
 
 
 ### Telescopes and Instruments

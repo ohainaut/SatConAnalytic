@@ -39,6 +39,16 @@ import conanplot as cpLib
 import constants as caCst
 import satDots
 
+# myStars = np.array([ [17., 20.], [18., 10],
+#     [19, -10], [20,12], [21, -43],[22, -4],[23, -64],[0,-14],[1,-32],[2,-13.],
+#     [20.44,-14], [22.1,-20],[1,4],[2,20],
+#     [23.1,-60],
+#     [21.39,-11.], [2., -61.]
+#     ])
+
+myStars = np.array([ [14.5, -30] ])
+
+myStars = myStars* np.array([-15.,1.])  # convert hours to deg
 
 def create_argument_parser():
     """Create and return the argument parser"""
@@ -93,6 +103,10 @@ def create_argument_parser():
 
     parser.add_argument('--noplot', action='store_false',
                         help="Plot: Don't generate the plot (mostly debug)")
+    
+    parser.add_argument('--noconan', action='store_true',
+                        help="Plot: Don't plot the conAn simulation; only the sat dots")
+
     parser.add_argument('--noshade', action='store_true',
                         help="Plot: Don't shade low elevations")
     parser.add_argument('--noscalebar', action='store_false',
@@ -106,8 +120,39 @@ def create_argument_parser():
     parser.add_argument('--pdf', action='store_true',
                         help="Plot: output file in pdf (default is png)")
     return parser
+#---------------------------------------------------------------------------
+def get_skyColor(sunElev):
+    """Return sky color based on sun elevation
 
+    Args:
+        sunElev (float): Sun elevation in degrees
 
+    Returns:
+        str: Color string
+    """
+    if sunElev > 0:
+        return (0.5,0.7,1.0)  # Day: light blue
+    elif sunElev <= -18:
+        return (0.0,0.0,0.0)  # Night: black
+    else:
+        ds = sunElev/18 + 1.
+        return (0.5*ds,0.7*ds,ds)    # Twilight: dark blue to black
+
+#---------------------------------------------------------------------------
+def cmap_sky(skyColor, cmap_name='magma'):
+    '''Create a colormap for the sky based on sun elevation
+
+    Args:
+        sunElev (float): Sun elevation in degrees
+    '''
+
+    cmap = plt.get_cmap(cmap_name).copy()
+    rgb_colors = np.array(cmap.colors)+  np.array(skyColor)
+    rgb_colors = np.clip(rgb_colors, 0, 1)
+    cmap.colors = list(rgb_colors)
+    return cmap
+
+#---------------------------------------------------------------------------
 def main(args=None):
     """Main function that can be called with arguments or from command line
     
@@ -118,7 +163,7 @@ def main(args=None):
         dict: Dictionary containing results and output information
     """
     
-    print('conAn ObsSky')
+    print('>>>SatConAnalytic: obsSky<<<')
     
     #----- config
     step = 1. #deg ~1. Smaller values take forever
@@ -153,18 +198,20 @@ def main(args=None):
     else:
         skyFluxFlag = False
     
-    #
+    #===========================================================================
     # OBSERVATORY TELESCOPE INSTRUMENT
-    #
+    #===========================================================================
+
     print('=====TELESCOPE/INSTRUMENT SETUP=======================================')
     myTel = cpLib.getTelescope(myargs)
     print(myTel)
     
     
-    #
-    # SUN
-    #
     
+    #===========================================================================
+    # SUN
+    #===========================================================================
+        
     sunAlpha, sunDelta, sunElev = caLib.consolidate_sun(
         myargs.alphaSun, myargs.deltaSun, myargs.elevSun, myTel.lat)
     
@@ -178,20 +225,28 @@ def main(args=None):
     print(f'Validation: az= {sunAz:.2f}, el= {sunEl:.2f}d\n')
     
     
-    
-    
-    
+    #===========================================================================
+    # objects
+
+    starsAz, starsEl = caLib.radec2azel(myStars[:,0] +( sunAlpha - 180.), myStars[:,1], myTel.lat)
+    print(   f'Stars az/el:')
+    for i in range(len(myStars)):
+        print(f'  RA={myStars[i,0]:6.2f}d Dec={myStars[i,1]:6.2f}d -> Az={starsAz[i]:6.2f}d El={starsEl[i]:6.2f}d') 
+
+
+    #===========================================================================
+
     # output file
     outfileroot  = f'{myargs.code}_{myargs.constellations}_'
-    outfileroot += f'{myargs.magSelect}_{int(myTel.lat):02d}_{int(sunAlpha):02d}'
+    outfileroot += f'{myargs.magSelect}_{int(myTel.lat):02d}_{int(sunAlpha*10):04d}'
 
     #===========================================================================
     #===========================================================================
     #===========================================================================
     #===========================================================================
-    #
     #---  COMPUTE CONSTELLATIONS
-    #
+    #===========================================================================
+    
 
     # expand the constellation Id into a list of real constellations
     CONSTELLATIONS = caLib.findConstellations(myargs.constellations)
@@ -200,6 +255,7 @@ def main(args=None):
     print()
 
 
+    print('=====CALCULATIONS=====================================================')
 
 
     # Azimuth-Elevation mesh:
@@ -276,7 +332,7 @@ def main(args=None):
     if myargs.plotflag:
         print( f'Satellite magnitudes in [{magmax:.2f},{magmin:.2f}]')
         print( f'Satellite eff. mag.  in [{mageffmax:.2f},{mageffmin:.2f}]')
-        print( f'\nFolliwing output for zenith: (AzAlt={AzEl[:,-1,-1]})')
+        print( f'\nFollowing output for zenith: (AzAlt={AzEl[:,-1,-1]})')
         print('- Sat density [n/sq.dg]', round( densSatAll[-1,-1],  4))
         print('- Sat velocity (for last constellation) [deg/s]', round(veli[-1,-1],4))
         print(f'- Diffuse mag [mag/sq/arcsec]: {-2.5*np.log10(fluxSatTotal[-1,-1]):.2f}' )
@@ -301,13 +357,13 @@ def main(args=None):
     #     0.,0.,0.,0.)
     # #will be written to file later
 
+
+
     #===========================================================================
     #===========================================================================
-    #===========================================================================
-    #===========================================================================
-    #
     # PREPARE THE PLOT
-    #
+    #===========================================================================
+    #===========================================================================
 
     aircut = [0., 20., 30.] # limits at which the effects are computed
     EffTot = np.zeros_like(aircut)
@@ -440,67 +496,20 @@ def main(args=None):
                     TrailTot[iAircut]  += TrailRing
                     surfTot[iAircut] += surfRing * len(AzEl[0,i,:])
 
-        print(f'Effect on exposures (at Zenith): Loss fraction: {dens[-1,-1]:.5g}/1.; Trails: {densobs[-1,-1]:.5g}/exp')
         for iAircut in np.arange(0,len(aircut)):
             EffTot[iAircut]   = EffTot[iAircut]  /surfTot[iAircut]
             TrailTot[iAircut] = TrailTot[iAircut]/surfTot[iAircut]
 
-            print(f'Effect on exp. (aver above {aircut[iAircut]}): Loss fraction: {EffTot[iAircut]:.5g}/1.; Trails: {TrailTot[iAircut]:.5g}/exp')
-            print(f'SurfTot: {surfTot[iAircut]:.2f} sq.deg ')
+            print(f'Effect on exposures (aver above {aircut[iAircut]}): Loss fraction: {EffTot[iAircut]:.5g}/1.; Trails: {TrailTot[iAircut]:.5g}/exp')
+            #print(f'SurfTot: {surfTot[iAircut]:.2f} sq.deg ')
+        print(f'Effect on exposures (at Zenith): Loss fraction: {dens[-1,-1]:.5g}/1.; Trails: {densobs[-1,-1]:.5g}/exp')
 
         
         # Calculate local time
         loct = (sunAlpha/15.+12.)%24
         
 
-        # # Save data to CSV file
-        # csv_filename = 'averageEffects.dat'
 
-        # # Check if file exists to determine if we need to write header
-        # file_exists = os.path.exists(csv_filename)
-        
-        # with open(csv_filename, 'a', newline='') as csvfile:
-        #     fieldnames = ['local_time', 'sunDelta', 'sunElev'] + \
-        #                 [f'aircut_{i}' for i in range(len(aircut))] + \
-        #                 [f'EffTot_{i}' for i in range(len(EffTot))] + \
-        #                 [f'TrailTot_{i}' for i in range(len(TrailTot))] + \
-        #                 ['dens_zenith', 'densobs_zenith']
-            
-        #     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            
-        #     # Write header if file doesn't exist
-        #     if not file_exists:
-        #         writer.writeheader()
-            
-        #     # Prepare data row
-        #     row_data = {
-        #         'local_time': loct,
-        #         'sunDelta': sunDelta,
-        #         'sunElev': sunElev,
-        #         'dens_zenith': dens[-1,-1],
-        #         'densobs_zenith': densobs[-1,-1]
-        #     }
-            
-        #     # Add aircut values
-        #     for i, val in enumerate(aircut):
-        #         row_data[f'aircut_{i}'] = val
-                
-        #     # Add EffTot values
-        #     for i, val in enumerate(EffTot):
-        #         row_data[f'EffTot_{i}'] = val
-                
-        #     # Add TrailTot values
-        #     for i, val in enumerate(TrailTot):
-        #         row_data[f'TrailTot_{i}'] = val
-            
-        #     # Write the data row
-        #     writer.writerow(row_data)
-        
-        # print(f'Data appended to {csv_filename}')
-        
-        # outstring += f' {EffTot} {TrailTot}'
-
-        
         if myargs.magSelect == 'EFFECT':
             #print("Effect")
             barLabel = "Fraction lost"
@@ -522,9 +531,14 @@ def main(args=None):
 
 
 
-    #
+    #======================================================================
+    #======================================================================
+    #======================================================================
     # PLOT
-    #
+    #======================================================================
+    #======================================================================
+    #=====================================================================
+    print('=====PLOT=============================================================')
 
     if not myargs.plotflag:
         myargs.labelplotflag  = False
@@ -535,22 +549,28 @@ def main(args=None):
         ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
         cpLib.initPolPlot(ax)
         ax.set_facecolor("k")
+        skyColor = get_skyColor(sunElev)
         
-        clab = 'k'
-        ccon = 'k'
-        tickformat = "{:.1f}".format
 
-        #    logDensity[ logDensity > logMaxValue  ] = logMaxValue
-        #    logDensity[ logDensity < logMinValue  ] = logMinValue
-    
+        if myargs.noconan:
+            logDensity = np.zeros_like(AzEl[0]) - 1000.  # empty sky
+        
         cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1], logDensity , 
                         levels=np.linspace(logMinValue,logMaxValue,100),  # NUMBER OF LEVELS
                         vmin=logMinValue, vmax=logMaxValue ,
                         extend='both',
                         cmap=cmap)
-        cfd.cmap.set_under('k') # below minimum -> black
+    
+        if cmap == "magma": 
+            cfd.cmap = cmap_sky(skyColor, cmap_name=cmap)
+        cfd.cmap.set_under(skyColor) # below minimum -> black
 
 
+
+    #----------------------------------------------------------------------
+    # Stars
+    ax.scatter( np.radians(starsAz), 90.-starsEl,
+                s=150, c='r', edgecolors='k', marker='*', zorder=5)
 
     #----------------------------------------------------------------------
     #Scalebar
@@ -712,22 +732,23 @@ def main(args=None):
 
     # Discrete satellites as dots on the plot
     if myargs.noDots and myargs.plotflag:
-        print("==DOTS==")
         Sv = satDots.makeConstellationStatTable(CONSTELLATIONS, 
                                                 sunAlpha, sunDelta, 
                                                 myTel.lat, 
-                                                (180+sunAlpha)*360.) ## slowed 10x
+                                                sunAlpha*240)#(180+sunAlpha)*360.) ## slowed 10x
         if myargs.magSelect == "EFFECT":
             myargs.magSelect = "ALL"
+        print('=====DOTS==========================================================')
+        print(f'Plotting dots, selection: {myargs.magSelect}')
 
         if myargs.magSelect == "ALL":
             # not illuminated in grey
             Si = Sv[  ~Sv["bIlluminated"] ]
-            ax.scatter(Si["Azr"],Si["ZD"], s=Si["dot"], c="grey", alpha=0.2)
+            ax.scatter(Si["Azr"],Si["ZD"], s=Si["dot"], c="grey", alpha=.3)
 
         Si = Sv[  Sv["bIlluminated"] ]
         if myargs.magSelect in ["ALL",  "OBS"] :
-            # not bright in yellow
+            # not-bright in yellow
             Sb = Si[ Si["mag"] >= 7 ]
             ax.scatter(Si["Azr"],Si["ZD"], s=Si["dot"], c="yellow")
 
@@ -735,12 +756,12 @@ def main(args=None):
         if myargs.magSelect in ["ALL", "OBS","BRIGHT"] :
             # bright in red
             Sb = Si[ Si["mag"] < 7 ]
-            ax.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], c="red")
+            ax.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], c="orange")
 
 
 
 
-    print('finishing...')
+    #print('finishing...')
 
 
     # save plot
@@ -748,11 +769,9 @@ def main(args=None):
         fig.tight_layout()
         plt.savefig(outpath+'w.png')
         filename = outpath+outfileroot+myargs.outputformat
-        print(filename)
 
         plt.savefig(filename)
     #--
-    print("output in ",outfileroot)
 
  
     results = {
@@ -781,8 +800,7 @@ def main(args=None):
         'local_time': loct
     }
     
-    # TODO: Add the rest of the plotting and analysis logic here
-    # This would include all the plot generation, CSV writing, etc.
+    print("...done.")
     
     return results
 

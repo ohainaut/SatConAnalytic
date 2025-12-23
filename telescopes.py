@@ -22,13 +22,16 @@ def readTelescopeFile(myFile):
      try:
           # Try to open the file as provided (local file or absolute path)
           with open(myFile) as infile:
-               return json.load(infile, object_hook=_Dict)
+               tels =  json.load(infile, object_hook=_Dict)
+          print(f"Loaded telescope definitions from local {myFile}")
      except FileNotFoundError:
           # If file not found, try to locate it in the same directory as this script
           script_dir = os.path.dirname(os.path.abspath(__file__))
           fallback_path = os.path.join(script_dir, myFile)
           with open(fallback_path) as infile:
-               return json.load(infile, object_hook=_Dict)
+               tels =  json.load(infile, object_hook=_Dict)
+          print(f"Loaded telescope definitions from fallback {fallback_path}")
+     return tels
 
 
 
@@ -91,6 +94,7 @@ class Telescope():
         msg  = f'{self.code}:  '
         msg += f'{self.telescope} {self.instrument}\n'
         msg += f'\tLatitude: \t{self.lat:.1f} deg\n'
+        msg += f'\tLongitude: \t{self.lon:.1f} deg\n'
         msg += f'\tExp.time: \t{self.expt} s\n'
         if self.fovl > 0.1 :
             msg += f'\tFoV:    \t{self.fovw:.2f} x {self.fovl:.2f} deg\n'
@@ -128,6 +132,6 @@ def readTelescopes( file='telescopes.json'):
 
 
 if __name__ == "__main__":
-     mytel = readTelescopes()
-     for t in mytel.list:
-          print( mytel.byCode[t] )
+     mytels = readTelescopes()
+     for t in mytels.list:
+          print( mytels.byCode[t] )

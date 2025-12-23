@@ -24,13 +24,13 @@ import matplotlib.pyplot as plt
 from astropy.table import Table, vstack
 
 # import ConAn routines
-import conan as caLib
-import conanplot as cpLib
-import constellations
-import constants as caCst
+import SatConAnalytic.conan as caLib
+import SatConAnalytic.conanplot as cpLib
+import SatConAnalytic.constellations as constellations
+import SatConAnalytic.constants as caCst
 
-#outpath = "/home/ohainaut/public_html/outsideWorld/"
-outpath = "./"
+outpath = "/home/ohainaut/public_html/outsideWorld/"
+#outpath = "./"
 
 logging.basicConfig(filename='conan.log',  
                     level=logging.INFO,
@@ -57,8 +57,8 @@ def propagateTimeNode(node0, times):
     [rad], [s] -> [rad] '''
 
     return node0 + times /86400. *2.*np.pi  
-#-----------------------------------------------------------------------------
 
+#-----------------------------------------------------------------------------
 def elementsToLongLat(noder,incr,anomr):
     '''get long, lat [rad] from propagated elements
      
@@ -249,6 +249,15 @@ def plot_legendMag(ax, minMag=5,maxMag=11.1):
 
 
 def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
+    '''
+    times: in [s]
+    '''
+
+    slowSatRev =   30.  # slow down the sat revolution for smoother animation
+                    # 100 is about right for visualization when stopping rotation (slowEarthRot=100000000)
+                    # 30 is OK when the Earth is not slowed.
+    slowEarthRot = 1.  # slow down the Earth rotation for smoother animation
+
 
 
     # get the orbital element table for all the satellites
@@ -260,12 +269,10 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
 
 
     # revolution of the sat
-    SAT["anomr"] = propagateTimeAnom(SAT["anom0"], SAT["omega"], times/90.)
-    #SAT["anomr"] = SAT["anom0"].copy()
+    SAT["anomr"] = propagateTimeAnom(SAT["anom0"], SAT["omega"], times/slowSatRev)
 
     # rotation of the Earth
-    SAT["noder"] = propagateTimeNode(SAT["node0"], times/90.)
-    #SAT["noder"] = SAT["node0"].copy()
+    SAT["noder"] = propagateTimeNode(SAT["node0"], times/slowEarthRot)
 
     SAT["latr"],SAT["longr"] = elementsToLongLat(SAT["noder"], SAT["inc"], SAT["anomr"])
     SAT["xg"],SAT["yg"],SAT["zg"]   = LongLatToGeoXYZ(SAT["alt"], SAT['latr'], SAT["longr"])
@@ -306,7 +313,10 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
     Sv = SAT[ SAT["zt"] > 0]
     log.info(f'Select Visible: {len(SAT)} -> {len(Sv)}')
 
+    # illuminated satellites
     Sv["bIlluminated"] =illuminatedSat(Sv["xg"],Sv["yg"],Sv["zg"], sunAlpha, sunDelta) 
+
+    # distance, Az, ZD
     Sv["Delta"] = topoXYZToDelta( Sv["xt"],Sv["yt"],Sv["zt"] )
     Sv["Azr"],Sv["ZD"] = topoXYZToAzrZD( Sv["xt"],Sv["yt"],Sv["zt"],
                                         Delta=Sv["Delta"]) 
@@ -326,8 +336,8 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
     return Sv
 
 
-#=====================================================================================
-#=====================================================================================
+#===============================================================================
+#===============================================================================
 
 
 
@@ -520,4 +530,4 @@ if __name__ == "__main__":
     plt.savefig(f'w.png')
     #plt.savefig(f'w{int(times)}.png')
 #--
-    log.info('============================================================================')
+    log.info('========================================================================')

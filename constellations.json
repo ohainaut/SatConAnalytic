@@ -762,7 +762,7 @@
     {
         "name" : "Today\"s pre-constellation satellites (2020)",
         "comment" : "Synthetic distributino",
-        "code" : "YESTURDAY",
+        "code" : "YESTERDAY",
         "shells" : {
             "todayHigh1" : {
                 "label" : "U-LEO1",
@@ -839,6 +839,76 @@
                 "nSat"  : 49,
                 "inc"   : 87.9,
                 "alt"   : 1200.0}
+        }
+    },
+    {
+        "name" : "ASTbright",
+        "comment" : "bright satellite constellation",
+        "code" : "AST",
+        "shells" : {
+            "ast" : {
+                "label" :"ASTbright",
+                "totSat": 300,
+                "nPlane": 30,
+                "nSat"  : 1,
+                "inc"   : 55.0,
+                "alt"   : 550.0}
+        }
+    },
+    {
+        "name" : "ASTMany",
+        "comment" : "bright satellite constellation",
+        "code" : "ASTS",
+        "shells" : {
+            "ast1" : {
+                "label" :"ASTbright",
+                "totSat": 600,
+                "nPlane": 30,
+                "nSat"  : 1,
+                "inc"   : 50.0,
+                "alt"   : 550.0},
+            "ast2" : {
+                "label" :"ASTbright",
+                "totSat": 600,
+                "nPlane": 30,
+                "nSat"  : 1,
+                "inc"   : 55.0,
+                "alt"   : 550.0}, 
+            "ast3" : {
+                "label" :"ASTbright",
+                "totSat": 600,
+                "nPlane": 30,
+                "nSat"  : 1,
+                "inc"   : 65.0,
+                "alt"   : 550.0}, 
+            "ast4" : {
+                "label" :"ASTbright",
+                "totSat": 600,
+                "nPlane": 30,
+                "nSat"  : 1,
+                "inc"   : 75.0,
+                "alt"   : 550.0}, 
+            "ast5" : {
+                "label" :"ASTbright",
+                "totSat": 600,
+                "nPlane": 30,
+                "nSat"  : 1,
+                "inc"   : 85.0,
+                "alt"   : 550.0}
+        }
+    },
+    {
+        "name" : "SunLight",
+        "comment" : "Sun as a service",
+        "code" : "SUN",
+        "shells" : {
+            "ast" : {
+                "label" :"Sun",
+                "totSat": 300,
+                "nPlane": 5,
+                "nSat"  : 1,
+                "inc"   : 55.0,
+                "alt"   : 550.0}
         }
     }
 ]

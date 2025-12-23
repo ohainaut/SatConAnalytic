@@ -15,8 +15,8 @@ import numpy as np
 from astropy.table import Table
 import random
 
-import constants as cCst
-import conan as cLib
+import SatConAnalytic.constants as cCst
+import SatConAnalytic.conan as cLib
 
 
 log = logging.getLogger('conan')

@@ -172,14 +172,36 @@ def run_single_simulation():
     
     return result
 
+def run_series_simulation():
+    """Example of running a single simulation scanning a parameter"""
+    
+    # Define arguments as you would on command line
+    args = [
+        '-d', '-23',         # Sun declination 0 degrees
+        '-C', 'SLOWGWAK',#'TODAY', #'ALL', #'SL1old',        # Starlink constellation
+        '-T', 'FORSimg',
+        '-M', 'EFFECT',
+        #'--nolabel',
+        '--noDots',
+        '--noalmuc'
+    ]
+    
+    for a in np.arange(90,271.,.25):
+        args.extend(['-a', str(a)])  # Sun elevation from 75 to 180 degrees
+        result = obsSky.main(args)
+    
+    return result
+
 if __name__ == "__main__":
 
-    results = OW()
+    ###results = OW()
 
     # Example 1: Run a single simulation
     #single_result = run_single_simulation()
     
     # Example 2: Run multiple simulations
-    multiple_results = run_multiple_simulations()
+    #multiple_results = run_multiple_simulations()
     
+    _ = run_series_simulation()
+
     print("All simulations completed!")

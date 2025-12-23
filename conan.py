@@ -10,8 +10,8 @@ from astropy.table import Table, join
 from astropy.io import ascii
 
 # SatConAn: 
-import constants 
-import constellations
+import SatConAnalytic.constants as constants
+import SatConAnalytic.constellations as constellations
 
 #---------------------------------------------------------------------------
 def consolidate_sun(sunAlpha, sunDelta, sunElev, lat):
@@ -67,7 +67,54 @@ def get_sun(jd):
 
     return alpha, delta
 
-#------------------------------------------------------------------------------   
+#------------------------------------------------------------------------------ 
+def siderealTimeDeg(timeJD, longitudeDeg=0.0):
+    '''Compute the local sidereal time at a given longitude
+    IN:
+    - timeJD: Julian Day
+    - longitudeDeg: longitude of the site [deg], East positive
+    OUT:
+    - LST: local sidereal time [deg]
+    '''
+
+    # Loc ST
+    lst = (280.46061837 + 360.98564736629*(timeJD -2451545.0) )%360
+    lst += longitudeDeg
+    lst = lst %360.
+    return lst
+#------------------------------------------------------------------------------
+def findHAfromZDr(zdr, dr, latr):
+    '''Returns HA (symmetric HAmin=-HAmax) based on zenithal Distance.
+
+    In:
+    -  dr: declination or a np.array  declinations [RADIANS]
+    -  zdr [rad] can be a scalar or a vector like delta [radians]
+    -  latr: latitude of the site [rad]
+
+    Out: corresponding HA [hours]; this case is symmetric, so HAmin=-HAmax
+    '''
+
+    # generic spherical trigo:
+    cosHA = (np.cos(zdr) - np.sin(latr)*np.sin(dr))/(np.cos(latr)*np.cos(dr))
+
+    # case of unreachable dec
+    delta0r = latr - zdr # declination that reaches target airmass
+                       # at meridian
+    cosHA[dr <= delta0r]  = 1.
+
+    delta1r = latr +zdr # declination that reaches target airmass
+                      # at meridian on the other side
+    cosHA[dr >= delta1r]  = 1.
+
+    # case of dec that are always above airmass
+    deltapolr = -np.pi -latr + zdr # declination that is circumpolar for z
+    cosHA[dr < deltapolr] = -1.
+
+    HA = np.degrees( np.arccos(cosHA)) /15.
+    return HA
+
+
+#---------------------------------------------------------------------------
 def findConstellations(constellationsll):
     '''Assemble a Constellations object (set of constellations)
     for a list of constellations.
@@ -82,13 +129,13 @@ def findConstellations(constellationsll):
         'SL': ['SL1', 'SL2'],
         'OW': ['OW2r'],
         'SLOW': ['SL1', 'SL2','OW2r'],
-        'TODAY': ['YESTURDAY', 'TODAYconst'],
-        'SLOWGWAK': ['YESTURDAY',
+        'TODAY': ['YESTERDAY', 'TODAYconst'],
+        'SLOWGWAK': ['YESTERDAY',
                     'SL1','SL2',
                     'OW2r',
                     'GW',
                     'AK' ],
-        'ALL': ['YESTURDAY',
+        'ALL': ['YESTERDAY',
                 'SL1', 'SL2', 
                 'OW2r', 
                 'GW', 'AK', 'ESP']
