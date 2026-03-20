@@ -10,6 +10,7 @@
 import logging
 import json
 import os
+log = logging.getLogger('satcon')
 
 class _Dict(dict):
     '''convenience: access dict as dict.element.element'''
@@ -23,14 +24,14 @@ def readTelescopeFile(myFile):
           # Try to open the file as provided (local file or absolute path)
           with open(myFile) as infile:
                tels =  json.load(infile, object_hook=_Dict)
-          print(f"Loaded telescope definitions from local {myFile}")
+          log.info(f"telescope definitions from {myFile}")
      except FileNotFoundError:
           # If file not found, try to locate it in the same directory as this script
           script_dir = os.path.dirname(os.path.abspath(__file__))
           fallback_path = os.path.join(script_dir, myFile)
           with open(fallback_path) as infile:
                tels =  json.load(infile, object_hook=_Dict)
-          print(f"Loaded telescope definitions from fallback {fallback_path}")
+          log.info(f"telescope definitions from fallback {fallback_path}")
      return tels
 
 
@@ -88,7 +89,7 @@ class Telescope():
         
         self.trail_arcsec = 3600.*self.fovl*self.trailf
     
-        self.ToC = f'{self.code}: \t{self.telescope} + {self.instrument}'
+        self.ToC = f'{self.code}: {self.telescope} + {self.instrument}'
 
     def __repr__(self) -> str:
         msg  = f'{self.code}:  '

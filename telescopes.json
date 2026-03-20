@@ -134,7 +134,7 @@
         "fovl_arcsec"        : 360.0,
         "resol_arcsec"       : 1,
         "maglim"      : 25.2,
-        "magbloom"    : 18.5,
+        "magbloom"    : -99,
         "trail_arcsec"      : 5.0
     },
     {
@@ -147,7 +147,7 @@
         "fovl"        : 5.0,
         "resol_arcsec"  : 10.0,
         "maglim"      : 6.0,
-        "magbloom"    : 99,
+        "magbloom"    : -99,
         "trailf"      : 1.0
     },
     {
@@ -155,6 +155,19 @@
         "telescope"   : "VRO",
         "lat"         : -30.24,
 		"lon"		  : -70.7494,
+        "instrument"  : "LSST",
+        "expt"        : 15,
+        "fovl"        : 3.0,
+        "resol_arcsec"  : 0.8 ,
+        "maglim"      : 24.6,
+        "trail_arcsec"  : 10.0 ,
+        "magbloom"    : 18.3
+    },
+    {
+	"code" : "LSSTtest",
+        "telescope"   : "VRO",
+        "lat"         : -30.117,
+		"lon"		  : -70.8,
         "instrument"  : "LSST",
         "expt"        : 15,
         "fovl"        : 3.0,

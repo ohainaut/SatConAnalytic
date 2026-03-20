@@ -14,20 +14,23 @@ Notes
 - this is a new implementation of vintage satDist
 '''
 
-import argparse, logging
+import logging
+import argparse
+import json
 
 import numpy as np
 import matplotlib
-#matplotlib.use('Agg')  # to avoid Xdisplay issues in remote
+matplotlib.use('Agg')  # to avoid Xdisplay issues in remote
 import matplotlib.pyplot as plt
 
-from astropy.table import Table, vstack
+
+from astropy.table import vstack
 
 # import ConAn routines
 import SatConAnalytic.conan as caLib
 import SatConAnalytic.conanplot as cpLib
-import SatConAnalytic.constellations as constellations
-import SatConAnalytic.constants as caCst
+import SatConAnalytic.constants as cCst
+import SatConAnalytic.constellations as constLib
 
 outpath = "/home/ohainaut/public_html/outsideWorld/"
 #outpath = "./"
@@ -37,12 +40,7 @@ logging.basicConfig(filename='conan.log',
                     format='[%(levelname)-8s %(name)s/%(funcName)s] %(message)s')
 
 log = logging.getLogger('conan')
-log.info('satDots in')
-#=====================================================================================
-#=====================================================================================
-
-
-#-----------------------------------------------------------------------------
+#==============================================================================
 def propagateTimeAnom(anom0, omega, times):
     '''Rotate the satellites on their orbit
     [rad], [rad/s], [s] -> [rad]'''
@@ -79,7 +77,7 @@ def LongLatToGeoXYZ(alt, latr, longr):
 
     [same unit as cst.earthRadius, km]'''
 
-    rs = caCst.earthRadius + alt
+    rs = cCst.earthRadius + alt
     x = rs* np.cos(latr)* np.cos(longr) 
     y = rs* np.cos(latr)* np.sin(longr)  # note -
     z = rs* np.sin(latr)
@@ -115,7 +113,7 @@ def illuminatedSat(xg, yg, zg, sunAlpha, sunDelta):
 
     #- satellites in sunlight:
     w =  ((xS>0)*1  #those in front of the Earth
-            +(distS > caCst.earthRadius)*1) #those behing but out of the shadow
+            +(distS > cCst.earthRadius)*1) #those behing but out of the shadow
     return w>0 # True for the illuminated satellites
 #-----------------------------------------------------------------------------
 
@@ -130,7 +128,7 @@ def geoXYZToTopXYZ(latr, x,y,z ):
 
     xo = x * sinLatO     - z * cosLatO
     yo =              y
-    zo = x * cosLatO     + z * sinLatO - caCst.earthRadius  # <- shift z to observatory
+    zo = x * cosLatO     + z * sinLatO - cCst.earthRadius  # <- shift z to observatory
     return xo, yo, zo
 #-----------------------------------------------------------------------------
 
@@ -149,23 +147,30 @@ def topoXYZToAzrZD(x,y,z, Delta=None):
     Azr = np.pi   + np.arctan2(y,x)       # Azimuth # corr apr.18
     return Azr,ZD
 #-----------------------------------------------------------------------------
-
-def satMag(x,y,z, alt, mag550=caCst.mag550, Delta=None, Sun=None):
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+def satMag(x,y,z, alt, mag550=cCst.mag550, Delta=None, Sun=None):
     if Delta is None:
         Delta = topoXYZToDelta(x,y,z)
 
     #== Photometry
     Airm = Delta/alt     # airmass (not 1/cos, for extreme values)
+
+    mag = (   mag550                # altitude (550km)
+             -13.701 +              # = -5log(550)   
+             5.*np.log10(Delta) +                 # distance
+             cCst.extinction * Airm             # extinction
+                )
     
+
     if Sun is None:
-        cosalphaSun = 0.
+        # no phase correction
+        return  mag
     else:
-        cosalphaSun = (x*Sun[0] + y*Sun[1] + z*Sun[2])/Delta
+        cosalphaSun = (x*Sun[0] + y*Sun[1] + z*Sun[2])/Delta  # phase  
+        return   mag + 2.5* np.log10((1.+cosalphaSun)/2.) 
 
-    return  mag550  -13.701 +  5.*np.log10(Delta) + 0.125 * Airm + 2.5* np.log10((1.+cosalphaSun)/2.)
-    # -13.701 = -5log(550)
 #-----------------------------------------------------------------------------
-
 def magToDotSize(  mag  ):
     '''scale magnitude into a matplotlib dot size'''
 
@@ -206,10 +211,8 @@ def plot_elevMag(ax, Sv):
                     color="b" ,
                     alpha=0.25,
                     zorder=30)
-    #print(sHist)
-
-    #ax.set_ylim(11,4)
     ax.set_xticks( np.arange(0.,91,30.))
+    ax.set_yticks( np.arange( 4., 13))
     ax.set_xlabel("Zenithal Distance [deg]")
     ax.set_ylabel("Mag")
     axH.set_label("Count")
@@ -245,12 +248,25 @@ def plot_legendMag(ax, minMag=5,maxMag=11.1):
                    labelbottom=False, labelleft=False)
 
 #-----------------------------------------------------------------------------
-
-
-
-def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
+def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times, anom0=0.):
     '''
-    times: in [s]
+    IN
+        CONSTELLATIONS: constellationS object,
+        sunAlpha, sunDelta:  [deg]
+        lat: [deg]
+        times: in [s]
+
+    OUT
+        Sv: Table with only the observable satellites (zt>0)
+        Columns:
+            "anomr", "noder", "latr", "longr": elements in radians
+            "xg", "yg", "zg": geocentric rectangular coordinates
+            "xt", "yt", "zt": topocentric rectangular coordinates
+            "bIlluminated": bolean: is the satellite illuminated ?
+            "Delta": distance to the satellite [km]
+            "Azr", "ZD": azimuth [rad] and zenithal distance [deg]
+            "mag": magnitude
+            "dot": dot size for plotting
     '''
 
     slowSatRev =   30.  # slow down the sat revolution for smoother animation
@@ -268,8 +284,11 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
     SAT = CONSTELLATIONS.Table
 
 
+    m550Max = np.max(SAT["mag550"])
+    log.info(f'Mag at 550km: mean={np.mean(SAT["mag550"]):.1f}')
+
     # revolution of the sat
-    SAT["anomr"] = propagateTimeAnom(SAT["anom0"], SAT["omega"], times/slowSatRev)
+    SAT["anomr"] = propagateTimeAnom(SAT["anom0"], SAT["omega"], times/slowSatRev) + anom0
 
     # rotation of the Earth
     SAT["noder"] = propagateTimeNode(SAT["node0"], times/slowEarthRot)
@@ -298,19 +317,19 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
 
     SAT["xt"],SAT["yt"],SAT["zt"]  = geoXYZToTopXYZ(np.radians(lat),
                                                     SAT["xg"],SAT["yg"],SAT["zg"])
-    SAT["bVis"] = SAT["zt"] < 0 # observability
+    SAT["bVis"] = SAT["zt"] > 0 # observability
 
     # intermediate plot - 3d map of the observable satellites
     if 0:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(SAT["xt"],SAT["yt"],SAT["zt"], s=1, c=1-SAT["bVis"] )
+        ax.scatter(SAT["xt"],SAT["yt"],SAT["zt"], s=1, c=SAT["bVis"] )
         plt.show()
 
 
 
     # Select only observable sat
-    Sv = SAT[ SAT["zt"] > 0]
+    Sv = SAT[ SAT["bVis"] ]
     log.info(f'Select Visible: {len(SAT)} -> {len(Sv)}')
 
     # illuminated satellites
@@ -321,97 +340,125 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times):
     Sv["Azr"],Sv["ZD"] = topoXYZToAzrZD( Sv["xt"],Sv["yt"],Sv["zt"],
                                         Delta=Sv["Delta"]) 
 
-    if 0:
-        plt.plot(Sv["Azr"],Sv["ZD"] )
-        plt.show()
-
-    Sv["mag"] = satMag(Sv["xt"],Sv["yt"],Sv["zt"] , Sv["alt"],  Delta=Sv["Delta"])
-    Sv["dot"] = magToDotSize( satMag(Sv["xt"],Sv["yt"],Sv["zt"] , Sv["alt"], 
-                                     Delta=Sv["Delta"]) )
-
-    if 0:
-        plt.scatter(Sv["Delta"],  Sv["mag"],       s=1 )
-        plt.show()
+    Sv["mag"] = satMag(Sv["xt"],Sv["yt"],Sv["zt"] , Sv["alt"],  
+                       mag550=Sv["mag550"],
+                       Delta=Sv["Delta"])
+    Sv["dot"] = magToDotSize( Sv["mag"] )
 
     return Sv
 
-
-#===============================================================================
-#===============================================================================
-
-
-
-if __name__ == "__main__":
- 
+#-----------------------------------------------------------------------------
+def create_argument_parser():
     #--- command line arguments
     parser = argparse.ArgumentParser(
         description='Compute and plot the position and magnitude of each satellite')
-    parser.add_argument('-a','--RA',         default=0.,
-                        help='''local time [h]''')
-    parser.add_argument('-d','--DEC',        default=0.,
-                        help='''Declination of the Sun [deg]''')
-    parser.add_argument('-n','--objlabel',  default="",
-                        help='''Name of the object for label''')
-    parser.add_argument('-C','--constellation', default='SLOWGWAK',
-                        help="Constellation code (or meta-code)")
+    
+    # Sun
+    parser.add_argument('-d','--deltaSun', default=0.,
+                        help="Sun: Declination of the Sun [deg]")
+    parser.add_argument('-a','--alphaSun', 
+                        help="Sun: Hour Angle of the Sun [deg]. If present, overwrites elevSun")
+    parser.add_argument('-e','--elevSun', default=24.,
+                        help="Sun: Elevation of the Sun BELOW the horizon. Should probably be >0 in most cases [deg]")
+    
+    # Constellation
+    parser.add_argument('-C','--constellations', default='SLOWGWAK',
+                        help="Constellation: ID of the constellation group; 'list' for a list")
+    parser.add_argument('--constFile', default="constellations.json",
+                        help="Constellation: Which constellation file to use (default: constellations.json)")
+    parser.add_argument('-M','--magSelect', default="all", 
+                        choices=['all', 'detected', 'oversaturated', 'notDetected'],
+                        help="selection on magnitude; default=all")
+    
+
+    # Observatory and instrument parameters
     parser.add_argument('-T','--code',  default="FORSimg",
                         help='''Observatory: Telescope/Instrument code''')
     parser.add_argument('-l','--lat',   help='''Observatory: Latitude of the observatory [deg] (OVERWRITE preset)''')
-    parser.add_argument('-t','--expt',  help='''Observatory: Individual exposure time [s] (OVERWRITE preset)''')
-    parser.add_argument('-r','--resol', help='''Observatory: Resolution element (seeing, pixel) [deg] (OVERWRITE preset)''')
-    parser.add_argument('-f','--fovl',  help='''Observatory: Length of the field-of-view [deg] (OVERWRITE preset)''')
-    parser.add_argument('-w','--fovw',  help='''Width of the field-of-view [deg] (Default=Fovl; OVERWRITE preset)''')
-    parser.add_argument('-k','--trailf',help='''Observatory: Fraction of the exposure destroyed by a trail (1=full) (OVERWRITE preset)''')
-    parser.add_argument('-m','--maglim',     help='''Observatory: Limiting magnitude [mag] (detection limit for expTime) (OVERWRITE preset)''')
-    parser.add_argument('-M','--magbloom',   help='''Observatory: Saturation magnitude [mag]. Brighter object destroy the full exposure: their trailf=1 (OVERWRITE preset)''')
-    parser.add_argument(     '--instrument', help='''Observatory: Name of the instrument for label (OVERWRITE preset)''')
     parser.add_argument(     '--telescope',  help='''Observatory: Name of the telescope for label (OVERWRITE preset)''')
-    parser.add_argument(     '--mode',       default="ALL",
-                        help='''ALL OBS''')
-    myargs = parser.parse_args()
+    parser.add_argument(     '--instrument', help='''Observatory: Name of the instrument for label (OVERWRITE preset)''')
 
+    # plot
+    parser.add_argument('--pdf', action='store_true',
+                        help="OUTPUT: output file in pdf (default is png)")
+    
 
-    #- find telescope
-    print('TELESCOPE/INSTRUMENT SETUP')
+    log.debug(f'Argument parser created with {len(parser._actions)} actions.')
+    return parser
+
+#===========================================================================
+#===========================================================================
+#===========================================================================
+def main(args=None):
+    log.info('>>>SatConAnalytic: obsSky<<<')
+    #----- Parse arguments
+    parser = create_argument_parser()
+    if args is None:
+        myargs = parser.parse_args()
+    else:
+        myargs = parser.parse_args(args)
+
+    #===========================================================================
+    # OBSERVATORY TELESCOPE INSTRUMENT
+    #===========================================================================
+
+    log.info('=====TELESCOPE/INSTRUMENT SETUP================================')
+
+    myargs.expt = None
+    myargs.resol = None
+    myargs.fovl = None
+    myargs.fovw = None
+    myargs.trailf = None
+    myargs.maglim = None
+    myargs.magbloom = None
+
     myTel = cpLib.getTelescope(myargs)
-    print(myTel)
+    log.debug(myTel)
+    
 
-    #- rectangular coord of observatory
-    xobs = caCst.earthRadius * np.cos(np.radians(myTel.lat))
-    yobs = 0.  # by def of xyz
-    zobs = caCst.earthRadius * np.sin(np.radians(myTel.lat))
-
-    #---
-
-    # satellites
-    CONSTELLATIONS = caLib.findConstellations(myargs.constellation)
-    print('CONSTELLATIONS:')
-    print(CONSTELLATIONS.ToC)
-    print()
-
-
+    #===========================================================================
+    # SUN
+    #===========================================================================
+    log.info('=====SUN SETUP================================')    
+    sunAlpha, sunDelta, sunElev = caLib.consolidate_sun(
+        myargs.alphaSun, myargs.deltaSun, myargs.elevSun, myTel.lat)
+    
     #- time
-    timeh = float(myargs.RA)
+    timeh = ((180+sunAlpha)/15.) % 24. # local time in hours, with 0 at midnight, 12 at noon
+        # local time in hours, with 0 at midnight, 12 at noon
     timed = timeh*15. #[deg]
     times = timeh*3600. #[s]
 
-    # sun coordinates
-    sunDelta =  float(myargs.DEC) # deg
-    sunAlpha = timed -180. # sunAlpha is the HA [deg]
-    sunElev = caLib.radec2elev(sunAlpha,sunDelta,myTel.lat)  # [deg]
-    log.info(f'Sun: {sunAlpha/15.}h, {sunDelta} time={timeh}h elev={sunElev}')
+    log.info('Sun position:')
+    log.info(f'\tLocal time: {timeh:.2f}h')
+    log.info(f'\tHA = {sunAlpha:.1f}deg  = {(sunAlpha/15.)%24:.2f}h, Dec = {sunDelta:.1f}d')
+    log.info(f'\tElevation: {sunElev:.2f}d')
+
+    # get Azimuth (and check Elevation)    
+    sunAz,_ = caLib.radec2azel(sunAlpha, sunDelta, myTel.lat)
+    log.info(f'\tAzimuth: {sunAz:.2f}d, Elevation (validation): {_:.2f}d\n')
+    
+    
 
 
-    print('SUN:')
-    print(f'Local time: {timeh}h')
-    print(f'HA = {sunAlpha}deg  = {sunAlpha/15.:.2f}h, Dec = {sunDelta}')
-    print(f'Computed elevation: {sunElev:.2f}')
+    #===========================================================================
+    # CONSTELLATIONS
+    #===========================================================================
+    log.info('=====CONSTELLATIONS==================================')
 
-    # validation
-    wxs, wyx, wzs = LongLatToGeoXYZ(150e6, np.radians(sunDelta), np.radians(sunAlpha))
-    wxs, wyx, wzs = geoXYZToTopXYZ(np.radians(myTel.lat), wxs, wyx, wzs )
-    wAzr, wZD = topoXYZToAzrZD(wxs, wyx, wzs )
-    print(f'validation: Az ={np.degrees(wAzr):.2f}, ZD = {wZD:.2f}, el = {90-wZD:.2f} ')
+
+    # satellites
+    CONSTELLATIONS = constLib.findConstellations(myargs.constellations, constFile=myargs.constFile)  # constellationS object
+
+    log.debug(f'Found constellations:\n{CONSTELLATIONS.ToC}')
+    log.info(f'Constellations: {CONSTELLATIONS.totSat} satellites in {CONSTELLATIONS.totShells} shells.')
+
+
+    # #- rectangular coord of observatory
+    # xobs = cCst.earthRadius * np.cos(np.radians(myTel.lat))
+    # yobs = 0.  # by def of xyz
+    # zobs = cCst.earthRadius * np.sin(np.radians(myTel.lat))
+
 
     #==SATELLITES
 
@@ -438,8 +485,8 @@ if __name__ == "__main__":
     hlimkm = 4000. # km;   limits for the side view
     #- prepare the limb of the Earth for plots.
     wi = np.radians(np.linspace(0,360,360, endpoint=False))
-    xearth = caCst.earthRadius* np.cos(wi)
-    yearth = caCst.earthRadius* (np.sin(wi)-1.)
+    xearth = cCst.earthRadius* np.cos(wi)
+    yearth = cCst.earthRadius* (np.sin(wi)-1.)
 
     # NS
     axNS.set( aspect='equal')
@@ -465,30 +512,27 @@ if __name__ == "__main__":
 
 
     if 1:
-        #ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
-
-        if sunElev > 0:
-            pass
-        elif sunElev > -18:
-            icol = (18+sunElev)/18.
-            axPol.set_facecolor( (icol,icol,icol))
-        else: 
-            #axPol.set_facecolor( "k")
-            pass 
 
         cpLib.initPolPlot(axPol)
+        axPol.set_facecolor( cpLib.get_skyColor(sunElev) )
 
-        if myargs.mode == "ALL":
+        log.debug(f'total: {len(Sv)}')
+
+        # non-illuminated satellites
+        if myargs.magSelect == "all":
             Sd = Sv[  ~Sv["bIlluminated"] ]
+            log.info(f"dark: {len(Sd)}")
             axPol.scatter(Sd["Azr"],Sd["ZD"], s=Sd["dot"], 
-                          c="darkblue", alpha=0.2)
+                          c="grey", alpha=.5)
 
         Si = Sv[  Sv["bIlluminated"] ]
-        if myargs.mode in ["ALL",  "OBS"] :
+        log.info(f"illuminated: {len(Si)}")
+        if myargs.magSelect in ["all",  "detected"] :
             Sb = Si[ Si["mag"] >= 7 ]
+            log.info(f"faint: {len(Sb)}")
             axPol.scatter(Si["Azr"],Si["ZD"], s=Si["dot"], c="orange")
 
-        if myargs.mode in ["ALL", "OBS","BRIGHT"] :
+        if myargs.magSelect in ["all", "detected", "oversaturated"] :
             Sb = Si[ Si["mag"] < 7 ]
             log.info(f"bright: {len(Sb)}")
             axPol.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], c="red")
@@ -509,25 +553,45 @@ if __name__ == "__main__":
     loct = (sunAlpha/15.+12.)%24
     loch = int(loct)
     locm = int( (loct-loch)*60.)
-    axTitle.text(x,y,f'$\odot$ Sun: Loc.time: {loch:02d}:{locm:02d} '+
+    axTitle.text(x,y,f'$\odot$: Loc.time: {loch:02d}:{locm:02d} '+
              f'$\delta: {sunDelta:.2f}^o$, Elev: {sunElev:.2f}$^o$')
     y -= dy
 
     axTitle.text(x,y,'Constellation:')
     y -= dy
-    axTitle.text(x,y,CONSTELLATIONS.name)
+    axTitle.text(x,y,f'{" ".join(CONSTELLATIONS.name.split("\n"))} ')
     y -= dy
     axTitle.text(x,y, f'Total {CONSTELLATIONS.totSat:.0f} sat.')
  
 
-
-
     plot_legendMag(axLegend)
-
     plot_elevMag(axHist, Sv)
 
     #fig.tight_layout()
     plt.savefig(f'w.png')
-    #plt.savefig(f'w{int(times)}.png')
-#--
-    log.info('========================================================================')
+
+    outfileroot  = f'{myargs.code}_{myargs.constellations}_'
+    outfileroot += f'{myargs.magSelect}_{int(myTel.lat):02d}_{int(sunAlpha*10):04d}'
+
+    if myargs.pdf:
+        outfile = f'satDots_{outfileroot}.pdf'
+    else:   
+        outfile = f'satDots_{outfileroot}.png'
+    plt.savefig(outfile)
+    log.info('Results saved in %s'%outfile)
+
+
+
+
+#===============================================================================
+#===============================================================================
+#===============================================================================
+#===============================================================================
+if __name__ == "__main__":
+ 
+    cpLib.init_logger(log)
+    log.info('===satDots===')
+
+    results = main()
+    with open("satDots.json", "w") as f:
+        json.dump(results, f, indent=4, cls=cpLib.NumpyEncoder) 

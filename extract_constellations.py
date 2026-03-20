@@ -478,7 +478,7 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
         print(f"No constellations found matching pattern: {constellation_pattern}")
         return None
     
-    # Sort by altitude for consistent ordering (do this early!)
+    # Sort by altitude for consistent ordering 
     sorted_data = sorted(zip(matching_constellations, altitude_values), key=lambda x: x[1])
     matching_constellations = [x[0] for x in sorted_data]
     altitude_values = [x[1] for x in sorted_data]
@@ -526,8 +526,16 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
     maxy = 0  # Track maximum value for plot scaling
     aircut_labels = {}  # Store aircut values for each index
     
+    if sunDelta > 20:
+        obsCut = 18.3
+    elif sunDelta < -20:
+        obsCut = 20.
+    else:
+        obsCut = 19.
+
     # Iterate through EffTot indices
-    for efftot_index in indexes:
+    for iidx, efftot_index in enumerate(indexes):
+
         cmap = colormaps[efftot_index]
         colors = cmap(np.linspace(0., 0.7, len(matching_constellations)))  # Start from 0.3 to avoid too light colors
         
@@ -541,6 +549,13 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
         
         # Plot curves for this EffTot index
         for i, (constellation, altitude_km) in enumerate(zip(matching_constellations, altitude_values)):
+
+            if i > 0 and i < len(altitude_values)-1:
+                continue
+
+
+
+
             # Get the data for this constellation and sunDelta
             df = create_dataframe_for_constellation_sundelta(data, constellation, sundelta)
             
@@ -566,6 +581,10 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
                     label =  f'{altitude_km} km'
                 else:  # Other combinations - no label to avoid cluttering
                     label = None
+
+                #ORIG# Delete:
+                label =  f'{altitude_km} km'
+
                 
                 
                 ax.plot(df['localTime'], df[efftot_col], 
@@ -574,6 +593,10 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
                         linestyle=linestyles[efftot_index],
                         label=label, 
                         alpha=alphas[efftot_index] )
+                ax.fill_between(df['localTime'][df['localTime'] >obsCut], 
+                                df[efftot_col][df['localTime'] >obsCut], 
+                                color=color, 
+                                alpha=alphas[efftot_index]*0.5)
                 
                 # Update maximum for scaling
                 col_max = np.nanmax(df[efftot_col].values)
@@ -586,7 +609,11 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
     
     # Add vertical lines for sun elevation crossings
     # Use data from the first constellation that has sun elevation data
-    for constellation, _ in zip(matching_constellations, altitude_values):
+    for iidx, constellation in enumerate(matching_constellations):
+
+        
+
+
         df = create_dataframe_for_constellation_sundelta(data, constellation, sundelta)
         if not df.empty and 'sunElev' in df.columns:
             sun_elevations = [0, -6, -12, -18]
@@ -612,16 +639,17 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
             break  # Only need to do this once
     
 
-    # shade the effect
-    ax.fill_betweenx([1e-2, 1], 0., 24., color='red', alpha=0.05)
-    ax.fill_betweenx([1e-3, 1e-2], 0., 24., color='orange', alpha=0.05)
-    ax.fill_betweenx([1e-4, 1e-3], 0., 24., color='yellow', alpha=0.05)
-    ax.fill_betweenx([1e-8, 1e-4], 0., 24., color='green', alpha=0.05)
+    #ORIG## shade the effect
+    #ORIG#ax.fill_betweenx([1e-2, 1], 0., 24., color='red', alpha=0.05)
+    #ORIG#ax.fill_betweenx([1e-3, 1e-2], 0., 24., color='orange', alpha=0.05)
+    #ORIG#ax.fill_betweenx([1e-4, 1e-3], 0., 24., color='yellow', alpha=0.05)
+    #ORIG#ax.fill_betweenx([1e-8, 1e-4], 0., 24., color='green', alpha=0.05)
 
     # Formatting
     ax.set_xlabel('Local Time [hours]')
     ax.set_ylabel('Fraction of frames with trails')
-    ax.set_xlim(17.,24.1)
+    #ORIG#ax.set_xlim(17.,24.1)
+    ax.set_xlim(17.30,24.1)
     ax.grid(True, alpha=0.3)
     
     ax.legend(loc='upper right', 
@@ -635,11 +663,11 @@ def plot_efftot_multi_index(data, sundelta, constellation_pattern="OW_*_6_2", ax
     #inclination
     inclination = "60°" if "_6_" in constellation_pattern else "87.9°"
     antenna = f"{constellation_pattern[-1]}0°"
-    ax.text(24., 1e-3, 
-            f'Sun Declination: {sundelta}°',
-            horizontalalignment='right', 
-            verticalalignment='top', 
-            color='k', alpha=1.)
+    #ORIG#ax.text(24., 1e-3, 
+    #ORIG#        f'Sun Declination: {sundelta}°',
+    #ORIG#        horizontalalignment='right', 
+    #ORIG#        verticalalignment='top', 
+    #ORIG#        color='k', alpha=1.)
     
     # Set reasonable axis limits
     if maxy > 0:
@@ -812,10 +840,12 @@ if __name__ == "__main__":
                       'OW_12_6_2', 'OW_12_6_3', 'OW_12_6_4',
                       'OW_12_9_2', 'OW_12_9_3', 'OW_12_9_4',
                       'OW_3_6_2', 'OW_6_6_2', 'OW_13_6_2']
-    for my_constellation in constellations:
-        demo(my_constellation=my_constellation)
 
-if 0:
+    if 0:
+        for my_constellation in constellations:
+            demo(my_constellation=my_constellation)
+
+#if 0:
     json_file = "/home/ohainaut/Dropbox/ohainaut/Documents/ESO/E2E/SatelliteConstellations/SIMULATIONS/Eutelsat/obsSky_batch_results_fullOWeq.json"
 
     data = load_json_data(json_file)
@@ -833,7 +863,7 @@ if 0:
 
 
     indexes = [2]
-    for constellation_pattern in constellation_patterns:
+    for constellation_pattern in ["OW_*_9_4"]: #ORIG# constellation_patterns:
             print(f"\n[{icount:02d}] Plotting constellation pattern: {constellation_pattern}")
             
             if "*_6_" in constellation_pattern:
@@ -850,9 +880,9 @@ if 0:
                     ax.set_title(const_label, fontsize=14)
 
 
-                #over plot OW1gen for reference
-                extract_table_for_constellation_sundelta(data, 'OW1gen', sunDelta)
-                ax = plot_efftot_vs_localtime(data, 'OW1gen', sunDelta, ax=ax, my_color='grey', marker="+",indexes=indexes)
+                #ORIG# #over plot OW1gen for reference
+                #ORIG# extract_table_for_constellation_sundelta(data, 'OW1gen', sunDelta)
+                #ORIG# ax = plot_efftot_vs_localtime(data, 'OW1gen', sunDelta, ax=ax, my_color='grey', marker="+",indexes=indexes)
 
 
                 plot_efftot_multi_index(data, sunDelta, 
@@ -864,8 +894,9 @@ if 0:
                 if i == 0:
                     ax.set_title(const_label, fontsize=14)
 
-                ax.set_ylim(5e-5, 2e-1)
-                ax.set_yscale('log')
+                ax.set_ylim(0, 0.03)
+                #ORIG#ax.set_ylim(5e-5, 2e-1)
+                #ORIG#ax.set_yscale('log')
             plt.tight_layout()
 
             output_file = f'{const_file}_comparison.png'

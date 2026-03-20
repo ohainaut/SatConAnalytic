@@ -2,14 +2,25 @@
 """
 Example script showing how to use the refactored obsSky.py main function
 """
-
-# Import the refactored module (assuming it's saved as obsSky_refactored.py)
-import obsSky
-import conan as caLib
-import constellations
 import json
 import numpy as np
 from datetime import datetime
+
+import obsSky
+import conan as caLib
+import constellations
+
+# Save results to JSON file
+def numpy_serializer(obj):
+    """JSON serializer for numpy objects"""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
 
 def OW():
     CONSTELLATIONS = constellations.readConstellations()
@@ -31,16 +42,7 @@ def OW():
 
                 results.append(obsSky.main(args))
 
-    # Save results to JSON file
-    def numpy_serializer(obj):
-        """JSON serializer for numpy objects"""
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+    
 
     # Prepare metadata
     metadata = {
@@ -175,22 +177,100 @@ def run_single_simulation():
 def run_series_simulation():
     """Example of running a single simulation scanning a parameter"""
     
+    results = []
+
     # Define arguments as you would on command line
     args = [
-        '-d', '-23',         # Sun declination 0 degrees
-        '-C', 'SLOWGWAK',#'TODAY', #'ALL', #'SL1old',        # Starlink constellation
-        '-T', 'FORSimg',
-        '-M', 'EFFECT',
-        #'--nolabel',
-        '--noDots',
-        '--noalmuc'
+        '--constFile', 'McD.json', 
+        '-C', 'SXODC',  
+        '--noStar', 
+        '--noDots', 
+        '-e', '30',  
+        '-M', 'ALL', 
+        '--noRADecGrid', 
+        '-T', 'FORSimg'
     ]
     
-    for a in np.arange(90,271.,.25):
-        args.extend(['-a', str(a)])  # Sun elevation from 75 to 180 degrees
+    for a in np.arange(80, 281.,3.):
+        args.extend(['-a', str(a)])  # Sun RA from 75 to 180 degrees
         result = obsSky.main(args)
+        results.append(result)
     
-    return result
+
+
+    # Prepare metadata
+    metadata = {
+        'timestamp': datetime.now().isoformat(),
+        'total_simulations': len(results)
+        }
+    
+    
+    # Create output data structure
+    output_data = {
+        'metadata': metadata,
+        'results': results
+    }
+    
+    # Save to JSON file
+    output_filename = f"obsSky_batch_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    
+    try:
+        with open(output_filename, 'w') as f:
+            json.dump(output_data, f, indent=2, default=numpy_serializer)
+        print(f"Results successfully saved to {output_filename}")
+    except Exception as e:
+        print(f"Error saving results to JSON: {e}")
+        # Fallback: save a simplified version
+        simplified_results = []
+        for i, result in enumerate(results):
+            if result:
+                simplified_results.append({
+                    'index': i,
+                    'outfileroot': result.get('outfileroot', 'N/A'),
+                    'sunAlpha': float(result.get('sunAlpha', 0)),
+                    'sunDelta': float(result.get('sunDelta', 0)),
+                    'sunElev': float(result.get('sunElev', 0))
+                })
+        
+        simplified_data = {
+            'metadata': metadata,
+            'simplified_results': simplified_results
+        }
+        
+        fallback_filename = f"obsSky_batch_results_simplified_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(fallback_filename, 'w') as f:
+            json.dump(simplified_data, f, indent=2)
+        print(f"Simplified results saved to {fallback_filename}")
+    
+
+    return results
+
+
+def run_mapping_simulation():
+    """Example of running a single simulation scanning a parameter"""
+    
+    results = []
+    argsBase = [
+            '--constFile', 'McD.json', 
+            '-C', 'SXODC',  
+            '--noStar', 
+            '--noDots', 
+            '-M', 'ALL', 
+            '--noRADecGrid', 
+            '-d', '20',
+            '-T', 'SatDens',
+            '--pdf'
+        ]   
+
+    
+    for l in np.arange(50, -1.,-10.):
+        args = argsBase.copy()
+        args.extend(['-l', str(l), '-e', '18'])
+        result = obsSky.main(args)
+        
+
+
+    return results
 
 if __name__ == "__main__":
 
@@ -202,6 +282,6 @@ if __name__ == "__main__":
     # Example 2: Run multiple simulations
     #multiple_results = run_multiple_simulations()
     
-    _ = run_series_simulation()
-
+    results = run_mapping_simulation()
+    print(results)
     print("All simulations completed!")

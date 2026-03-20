@@ -19,8 +19,10 @@ earthRotation = 7.292114992e-5 # Earth rotation rate [rad / s]
 extinction    = 0.12 # extinction in V  [mag/airmass]
 
 mag550 = 7. # magnitude of a satellite at zenith at 550km 
+#mag550 = 6. # magnitude of a satellite at zenith at 550km  TEST LSST
+
 #mag550 = 5.7 # magnitude of a satellite at zenith at 550km - 5.7 = 7.0 at 1000km
-#mag550 = 4.7 # magnitude of a satellite at zenith at 550km - 5.7 = 6.0 at 1000km
+#mag550 = 4.7 # magnitude of a satellite at zenith at 550km - 4.7 = 6.0 at 1000km
     
 
 ZTFmagAzCut = 40. #  deg, azimuth range in which sun brightens sat - ZTF

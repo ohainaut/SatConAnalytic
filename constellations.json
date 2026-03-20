@@ -63,7 +63,7 @@
         }
     },
     {
-        "name" : "Starlink Gen-1 SAT-MOD-20200417-00037",
+        "name" : "Starlink Gen-1",
         "comment" : "updated from SAT-MOD-20200417-00037 - this overwrites prev version (12ksat)",
         "code" : "SL1",
         "shells" : {
@@ -608,7 +608,7 @@
         }
     },
     {
-        "name" : "OneWeb-2 (reduced 2021)",
+        "name" : "OneWeb-2r",
         "comment" : "Reduced architecture as of 2021",
         "code" : "OW2r",
         "shells" : {
@@ -636,7 +636,8 @@
         }
     },
     {
-        "name" : "Guo Wang (China) GW-A59 -2",
+        "name" : "GW",
+        "note": "Guo Wang (China) GW-A59 -2",
         "code" : "GW",
         "shells" : {
             "cgw11" : {
@@ -691,7 +692,8 @@
         }
     },
     {
-        "name" : "Amazon Kuiper",
+        "name" : "Leo",
+        "note"  : "Amazon Leo (Kuiper)",
         "code" : "AK",
         "shells" : {
             "cak1" : {
@@ -760,8 +762,8 @@
         }
     },
     {
-        "name" : "Today\"s pre-constellation satellites (2020)",
-        "comment" : "Synthetic distributino",
+        "name" : "Pre-constellation satellites",
+        "comment" : "Synthetic distribution, 2020",
         "code" : "YESTERDAY",
         "shells" : {
             "todayHigh1" : {
@@ -842,73 +844,189 @@
         }
     },
     {
-        "name" : "ASTbright",
+        "name" : "AST",
         "comment" : "bright satellite constellation",
-        "code" : "AST",
+        "code" : "AST-243",
         "shells" : {
-            "ast" : {
+            "ast1" : {
                 "label" :"ASTbright",
-                "totSat": 300,
-                "nPlane": 30,
+                "totSat": 60,
+                "nPlane": 3,
+                "nSat"  : 1,
+                "inc"   : 50.0,
+                "alt"   : 725.0,
+                "mag550":  2.0},
+            "ast2" : {
+                "label" :"ASTbright",
+                "totSat": 60,
+                "nPlane": 3,
                 "nSat"  : 1,
                 "inc"   : 55.0,
-                "alt"   : 550.0}
+                "alt"   : 730.0,
+                "mag550":  2.0}, 
+            "ast3" : {
+                "label" :"ASTbright",
+                "totSat": 60,
+                "nPlane": 3,
+                "nSat"  : 1,
+                "inc"   : 65.0,
+                "alt"   : 735.0,
+                "mag550":  2.0}, 
+            "ast4" : {
+                "label" :"ASTbright",
+                "totSat": 63,
+                "nPlane": 3,
+                "nSat"  : 1,
+                "inc"   : 75.0,
+                "alt"   : 740.0,
+                "mag550":  2.0} 
         }
     },
     {
-        "name" : "ASTMany",
+        "name" : "AST-Many",
         "comment" : "bright satellite constellation",
-        "code" : "ASTS",
+        "code" : "AST-3000",
         "shells" : {
             "ast1" : {
                 "label" :"ASTbright",
                 "totSat": 600,
-                "nPlane": 30,
+                "nPlane": 29,
                 "nSat"  : 1,
                 "inc"   : 50.0,
-                "alt"   : 550.0},
+                "alt"   : 550.0,
+                "mag550":  2},
             "ast2" : {
                 "label" :"ASTbright",
                 "totSat": 600,
                 "nPlane": 30,
                 "nSat"  : 1,
                 "inc"   : 55.0,
-                "alt"   : 550.0}, 
+                "alt"   : 600.0,
+                "mag550":  2}, 
             "ast3" : {
                 "label" :"ASTbright",
                 "totSat": 600,
-                "nPlane": 30,
+                "nPlane": 31,
                 "nSat"  : 1,
                 "inc"   : 65.0,
-                "alt"   : 550.0}, 
+                "alt"   : 650.0,
+                "mag550":  2}, 
             "ast4" : {
                 "label" :"ASTbright",
                 "totSat": 600,
-                "nPlane": 30,
+                "nPlane": 32,
                 "nSat"  : 1,
                 "inc"   : 75.0,
-                "alt"   : 550.0}, 
+                "alt"   : 700.0,
+                "mag550":  2} ,
             "ast5" : {
                 "label" :"ASTbright",
                 "totSat": 600,
                 "nPlane": 30,
                 "nSat"  : 1,
                 "inc"   : 85.0,
-                "alt"   : 550.0}
+                "alt"   : 750.0,
+                "mag550":  2}
         }
     },
     {
         "name" : "SunLight",
         "comment" : "Sun as a service",
-        "code" : "SUN",
+        "code" : "ReflectOrbital_2027",
         "shells" : {
             "ast" : {
                 "label" :"Sun",
-                "totSat": 300,
-                "nPlane": 5,
-                "nSat"  : 1,
+                "totSat": 36,
+                "nPlane": 36,
+                "nSat"  : 0,
                 "inc"   : 55.0,
-                "alt"   : 550.0}
+                "alt"   : 600.0,
+                "mag550":  -4.0
+            }
+        }
+    },
+    {
+        "name" : "SunLightFull",
+        "comment" : "Sun as a service",
+        "code" : "ReflectOrbital_2030",
+        "shells" : {
+            "ast1" : {
+                "label" :"Sun",
+                "totSat": 2000,
+                "nPlane": 50,
+                "nSat"  : 0,
+                "inc"   : 55.0,
+                "alt"   : 600.0,
+                "mag550":  -4.0
+            },
+            "ast2" : {
+                "label" :"Sun",
+                "totSat": 1500,
+                "nPlane": 50,
+                "nSat"  : 0,
+                "inc"   : 55.0,
+                "alt"   : 625.0,
+                "mag550":  -4.0
+            },
+            "ast3" : {
+                "label" :"Sun",
+                "totSat": 1500,
+                "nPlane": 50,
+                "nSat"  : 0,
+                "inc"   : 55.0,
+                "alt"   : 650.0,
+                "mag550":  -4.0
+            }
+        }
+    },
+    {
+        "name" : "SunLightHuge",
+        "comment" : "Sun as a service",
+        "code" : "ReflectOrbital_2035",
+        "shells" : {
+            "ast1" : {
+                "label" :"Sun",
+                "totSat": 20000,
+                "nPlane": 50,
+                "nSat"  : 0,
+                "inc"   : 55.0,
+                "alt"   : 600.0,
+                "mag550":  -4.0
+            },
+            "ast2" : {
+                "label" :"Sun",
+                "totSat": 15000,
+                "nPlane": 50,
+                "nSat"  : 0,
+                "inc"   : 55.0,
+                "alt"   : 625.0,
+                "mag550":  -4.0
+            },
+            "ast3" : {
+                "label" :"Sun",
+                "totSat": 15000,
+                "nPlane": 50,
+                "nSat"  : 0,
+                "inc"   : 55.0,
+                "alt"   : 650.0,
+                "mag550":  -4.0
+            }
+        }
+    },
+    {
+        "name" : "One",
+        "comment" : "test",
+        "code" : "ONE",
+        "shells" : {
+            "ast1" : {
+                "label" :"1",
+                "totSat": 200000,
+                "nPlane": 500,
+                "nSat"  : 0,
+                "inc"   : 55.0,
+                "alt"   : 500.0,
+                "mag550": 7.0
+            }
         }
     }
 ]

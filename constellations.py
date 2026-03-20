@@ -19,8 +19,7 @@ import SatConAnalytic.constants as cCst
 import SatConAnalytic.conan as cLib
 
 
-log = logging.getLogger('conan')
-log.debug('Constell')
+log = logging.getLogger('satcon')
 
 #----------------------------------------------------------------------------
 class _Dict(dict):
@@ -29,9 +28,62 @@ class _Dict(dict):
     __setattr__= dict.__setitem__
     __delattr__= dict.__delitem__
 
+#---------------------------------------------------------------------------
+def findConstellations(constellationsll, constFile="constellations.json"):
+    '''Assemble a Constellations object (set of constellations)
+    for a list of constellations.
+
+    in: list of constellations ['SL1', 'SL2', 'OWr2']  
+        or one of the preset codes defined below
+
+    out: a ConstellationS object
+    '''
+
+    log.info(f'looking for constellations with ID={constellationsll} in file {constFile}...')
+
+    metaConstellations = {
+        'SL': ['SL1', 'SL2'],
+        'OW': ['OW2r'],
+        'SLOW': ['SL1', 'SL2','OW2r'],
+        'TODAY': ['YESTERDAY', 'TODAYconst'],
+        'SLOWGWAK': [#'YESTERDAY',
+                    'SL1','SL2',
+                    'OW2r',
+                    'GW',
+                    'AK' ],
+        'ALL': ['YESTERDAY',
+                'SL1', 'SL2', 
+                'OW2r', 
+                'GW', 'AK', 'ESP']
+    }
+
+    if   constellationsll == 'list' :  
+        print(readConstellations(constFile))
+        print("=============================================================")
+        print("Available preset constellation groups:")
+        for c in metaConstellations:
+            print(f'  {c}: {metaConstellations[c]}')
+            
+        exit(0)
+    elif constellationsll in metaConstellations:
+        constellationsll = metaConstellations[constellationsll]
+    else:
+        constellationsll = [ constellationsll ]
+
+
+
+    return metaConstellation(constellationsll, constFile=constFile)
+    
+
 #----------------------------------------------------------------------------
 def readConstellationFile(myFile):
-     '''read constellation json file'''
+     '''read constellation json file
+     
+     return dict.
+     '''
+
+     log.debug(f'Reading in constellation file: {myFile}')
+
      try:
           # Try to open the file as provided (local file or absolute path)
           with open(myFile) as infile:
@@ -47,9 +99,16 @@ def readConstellationFile(myFile):
 class OneShell():
      '''define a single shell'''
      def __init__(self, oneShellJS) -> None:
+
           for x in list(oneShellJS):
               self.__dict__[x] = oneShellJS[x]
+
           self.nSat = int( self.totSat / self.nPlane + 0.5)
+
+          if not hasattr(self, 'mag550'):
+               self.mag550 = cCst.mag550
+
+
      def __repr__(self):
           return f'{self.label}: {self.totSat} = {self.nPlane}*{self.nSat}sat, i={self.inc}'
 
@@ -58,7 +117,7 @@ class OneShell():
           '''create the orbital element table for each sat in the shell'''
 
           # node = ascending nodes of the planes
-          nodes = (0. #( 360./self.nPlane *random.random() # start the node at random place
+          nodes = (random.random()*360#/self.nPlane # start the node at random place
                + np.linspace(0.,360., self.nPlane, endpoint=False) )# [deg]
 
           satAnom0 = np.array([0.])  #- initialize some empty vectors
@@ -68,13 +127,17 @@ class OneShell():
           satomega = np.array([0.])
 
 
-          # create the plane
-          for node in nodes: # cretes the various planes
-               wsatAnom0 = np.linspace(0.,360., self.nSat, endpoint=False) # [deg]
-               wsatInc    = wsatAnom0 *0 + self.inc # [deg]
-               wsatNode0  = wsatAnom0 * 0 + node # [deg]
-               wsatAlt    = wsatAnom0 * 0 + self.alt # [deg]
-               wsatomega =  wsatAnom0 * 0 + np.sqrt(cCst.G*cCst.earthMass / (1000.*(cCst.earthRadius + self.alt))**3) #ang.vel, [rad/sec] #r must be in m
+          # create the planes
+          for inode, node in enumerate(nodes): # cretes the various planes
+               wsatAnom0 = np.linspace(0.,360., self.nSat, endpoint=False) +  inode*360./self.nPlane # [deg] 
+               # Anom0 start the anomaly at "random" place.
+               # Remove the +  inode*... to start all planes at 0.
+
+               wsatInc    = np.full_like(wsatAnom0, self.inc) # [deg]
+               wsatNode0  = np.full_like(wsatAnom0, node) # [deg]
+               wsatAlt    = np.full_like(wsatAnom0, self.alt) # [deg]
+               wsatomega =  np.full_like(wsatAnom0, 
+                                         np.sqrt(cCst.G*cCst.earthMass / (1000.*(cCst.earthRadius + self.alt))**3)) #ang.vel, [rad/sec] #r must be in m
 
                #- and append the results for this plane to the main vectors
                satAnom0 = np.concatenate([satAnom0,   np.radians(wsatAnom0)])      # [RADIANS]
@@ -89,11 +152,12 @@ class OneShell():
                 'node0' : satNode0,
                 'inc'   : satInc,
                 'alt'   : satAlt,
-                'omega' : satomega
+                'omega' : satomega,
+                'mag550': np.full(len(satAnom0), self.mag550)    
                }
           )
 
-          log.debug(f'Shell table: {len(self.Table)} - {self.nSat} * {self.nPlane} = {self.nSat * self.nPlane} =?= {self.totSat}')
+          log.debug(f'Shell table: {len(self.Table)} -> {self.nSat}sat * {self.nPlane}planes = {self.nSat * self.nPlane} =?= {self.totSat}')
           return self.Table
      
 
@@ -128,29 +192,20 @@ class OneShell():
           alpha, delta, Delta, costheta = cLib.AltAz2Delta(
                obsLatitude,self.alt,AzElreshape)
           
+
           # geocentric equ. rect. of satellite
           xyz = cLib.RaDecAlt2xyz(alpha,delta, self.alt)
           
+
           # Velocities
           wAngularVel = cLib.AzEl2Vel(alpha, delta, Delta,obsLatitude,self.inc,self.alt)  
           
-          #Density    
-          # get delta of top of field of view
-          wAzEl = np.copy(AzElreshape)
-          wAzEl[1] += step
-          _, deltaTop, _, _ = cLib.AltAz2Delta(obsLatitude,self.alt,wAzEl)
-          
-          # get delta of bottom of field
-          wAzEl = np.copy(AzElreshape)
-          wAzEl[1] -= step
-          _, deltaBot, _, _ = cLib.AltAz2Delta(obsLatitude,self.alt,wAzEl)
-          
-          # density at this place; 
+          #Density  at this place on the shell 
           #         adjust angular size
           #         for distance, and
           #         for apparent orientation of the shell on line-of-sight
-          densitys = cLib.satNumDensity(deltaBot, deltaTop,self.inc,self.totSat) \
-                         * (Delta/(cCst.earthRadius+self.alt))**2 / costheta 
+          numDensity = cLib.satNumDensity1(delta,self.inc,self.totSat)
+          densitys = numDensity * (Delta/(cCst.earthRadius+self.alt))**2 / costheta 
           
           # Illuminated satellites
           illum = cLib.solIllum(xyz,sunAlpha, sunDelta)
@@ -158,25 +213,14 @@ class OneShell():
           
           #  MAGNITUDE of the satellites:
           
-          wmag =  cCst.mag550 + 5.*np.log10(Delta/550.)  # distances
+          wmag =  self.mag550 + 5.*np.log10(Delta/550.)   # distances
           wmag += cCst.extinction*(Delta/self.alt -1.)    # extinction
           
-          ## ZTF brightnening
-          # deltaAzs = np.cos(np.radians( AzEl[0] - azs ))
-          # mag = 1-np.degrees(np.arccos(DeltaAzs))/constants.ZTFmagAzCut 
-          # mag[Dmag < 0] = 0.
-          ##    experimental elevation function: peaks when angle(Sat,sun)=45deg
-          # el = AzEl[1] - els
-          # el[Del>90] = 0.
-          # Del = 1-((Del-constants.ZTFmagAngPeak)/constants.ZTFmagAngPeak)**2
-          # wmag += Dmag*Del*constants.ZTFmagAzBright     # ZTF brightening
-          
+
           return \
                np.reshape(wdensityi,   (AzEl.shape[1],AzEl.shape[2]) ) ,\
                np.reshape(wAngularVel, (AzEl.shape[1],AzEl.shape[2]) ),\
                np.reshape(wmag,        (AzEl.shape[1],AzEl.shape[2]) )
-     
-
 
 
 #----------------------------------------------------------------------------
@@ -233,7 +277,9 @@ class Constellations():
           - Constellation objets'''
 
           self.list = [c.code  for c in constJS]
-          self.name = ", ".join(self.list)
+          self.name = ",\n".join(self.list)
+
+
           self.byCode      = _Dict( { })
           for c in constJS:
                if type(c) == type(_Dict({})):
@@ -268,23 +314,33 @@ class Constellations():
 
 
 #----------------------------------------------------------------------------
-def readConstellations( file='constellations.json'):
+def readConstellations( constFile='constellations.json'):
      '''Reads a constellation json file into a Constellations object'''
-     allConst = readConstellationFile(file)
+
+     log.debug(f'file: {constFile}')
+     allConst = readConstellationFile(constFile)
      return   Constellations( allConst)
 
 #----------------------------------------------------------------------------
-def metaConstellation( cList, myConst=readConstellations() ):
-     try:
-          return Constellations( [ myConst.byCode[c] for c in cList])
-     except KeyError:
-          if cList[0] == 'list':
-               return myConst
+def metaConstellation( cList, constFile='constellations.json'):
 
-          cError = [c for c in cList if c not in myConst.list]
-          print(f'{cError} not in constellation list')
-          print( myConst)
+     log.debug(f'list: {cList} and file: {constFile}')
+
+     allConstellations = readConstellations(constFile=constFile)
+
+     if cList[0] == 'list':
+         return allConstellations
+
+
+     try:
+          return Constellations( [ allConstellations.byCode[c] for c in cList])
+     except KeyError:
+
+          cError = [c for c in cList if c not in allConstellations.list]
+          log.error(f'{cError} not in constellation list')
+          log.debug( allConstellations.list )
+          log.error(f'metaConstellation: {cError} not in constellation list: {allConstellations.list}')
           raise ValueError(cError)
 
 if __name__ == "__main__":
-     print( readConstellations()  )
+     print(readConstellations()  )

@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 # SatConAnalytic - Satellite Constellation Analytic simulations
 # conan.py:  generic constellation functions
-#
-#
-# conan.py: definitions and functions
 #==============================================================================
+
+import logging
 import numpy as np
-from astropy.table import Table, join
-from astropy.io import ascii
 
 # SatConAn: 
 import SatConAnalytic.constants as constants
 import SatConAnalytic.constellations as constellations
+
+
+
+log = logging.getLogger('satcon')
 
 #---------------------------------------------------------------------------
 def consolidate_sun(sunAlpha, sunDelta, sunElev, lat):
@@ -34,6 +35,7 @@ def consolidate_sun(sunAlpha, sunDelta, sunElev, lat):
         sunAlpha = float(sunAlpha)
         sunElev = radec2elev(sunAlpha,sunDelta,lat)
 
+    log.debug(f'consolidate_sun: sunAlpha={sunAlpha}, sunDelta={sunDelta}, sunElev={sunElev}')
     return sunAlpha, sunDelta, sunElev
 
 
@@ -115,48 +117,6 @@ def findHAfromZDr(zdr, dr, latr):
 
 
 #---------------------------------------------------------------------------
-def findConstellations(constellationsll):
-    '''Assemble a Constellations object (set of constellations)
-    for a list of constellations.
-
-    in: list of constellations ['SL1', 'SL2', 'OWr2']  
-        or one of the preset codes defined below
-
-    out: a Constellations object
-    '''
-
-    metaConstellations = {
-        'SL': ['SL1', 'SL2'],
-        'OW': ['OW2r'],
-        'SLOW': ['SL1', 'SL2','OW2r'],
-        'TODAY': ['YESTERDAY', 'TODAYconst'],
-        'SLOWGWAK': ['YESTERDAY',
-                    'SL1','SL2',
-                    'OW2r',
-                    'GW',
-                    'AK' ],
-        'ALL': ['YESTERDAY',
-                'SL1', 'SL2', 
-                'OW2r', 
-                'GW', 'AK', 'ESP']
-    }
-
-    if   constellationsll == 'list' :  
-        print(constellations.readConstellations())
-        print("=============================================================")
-        print("Available preset constellation groups:")
-        for c in metaConstellations:
-            print(f'  {c}: {metaConstellations[c]}')
-            
-        exit(0)
-    elif constellationsll in metaConstellations:
-        constellationsll = metaConstellations[constellationsll]
-    else:
-        constellationsll = [ constellationsll ]
-
-    return constellations.metaConstellation(constellationsll)
-    
-#---------------------------------------------------------------------------
 def velPosAng(delta,satInc):
     '''Compute the velocity position angles for a list of satellites.
 
@@ -166,7 +126,10 @@ def velPosAng(delta,satInc):
     
     out: the two position angles (up and down) [deg]
     
-    Note: deals properly with retrograde orbits (with satInc > 90)
+    Notes:
+    - deals properly with retrograde orbits (with satInc > 90)
+    - not used?
+
     '''
 
     sintheta = np.cos(np.radians(satInc))/np.cos(np.radians(delta))
@@ -207,7 +170,7 @@ def satCount(l1,l2,satInc,N):
 #---------------------------------------------------------------------------
 def satNumDensity(delta1,delta2,satInc,satNum):
     '''
-    Density of satellites in latitude range
+    Density of satellites in latitude range delta1-delta2
 
     IN:    
     - delta1,2 = min and max latitude [deg] of the field
@@ -216,14 +179,38 @@ def satNumDensity(delta1,delta2,satInc,satNum):
     
     OUT: the density of satellite at the field [sat/sq.deg]
 
-    Note: accounts for the shrinking sky at higher latitudes.
     '''
+    nSat = satCount(delta1,delta2,satInc,satNum)
+    area = 360.*180./np.pi * (np.sin(np.radians(delta2)) - np.sin(np.radians(delta1))) # area of the band
+
+    return nSat / area
     
-    satNumDensity = satCount(delta1,delta2,satInc,satNum) \
-        / ( 360.*180./np.pi * (np.sin(np.radians(delta2)) - np.sin(np.radians(delta1))) )
-        # number of satellites / size of the band
-    return satNumDensity
+
+#---------------------------------------------------------------------------
+def satNumDensity1(delta,satInc,satNum):
+    '''
+    Density of satellites in latitude range delta1-delta2
+
+    IN:    
+    - delta =  latitude [deg] of the field
+    - satNum: total number of sat in the shell
+    - satInc: inclination of shell
     
+    OUT: the density of satellite at the field [sat/sq.deg]
+
+    '''
+
+    epsilon = .201 # half-width of the band in latitude [deg]
+
+    nSat = satCount(delta+epsilon,delta-epsilon,satInc,satNum)
+    area = 360.*180./np.pi * (np.sin(np.radians(delta-epsilon)) - np.sin(np.radians(delta+epsilon))) # area of the band
+
+    return nSat / area
+    
+
+
+
+
 #---------------------------------------------------------------------------
 def integrateSat(ElLim, AzEl, density ):
     '''count the total number of satellites above an elevation
@@ -239,28 +226,45 @@ def integrateSat(ElLim, AzEl, density ):
     '''
     
     ElCum = np.zeros_like(ElLim)
-    Eli = 0    
+    El_index = 0    
     wCum = 0. # integrator
 
-    
-    i = len(AzEl[1,:,0]) -1          # we start at zenith
-    step = AzEl[1,1,0] - AzEl[1,0,0] # step in elevation
-    
-    while i >=0 and Eli < len(ElLim): # scan elevation rings
-        if AzEl[1,i,0] <= ElLim[Eli]:
-            # close one of the requested elevations
-            ElCum[Eli] = wCum
-            Eli += 1
-        
-        areaElev = np.degrees(2*np.pi*np.cos(np.radians( AzEl[1,i,0] ))) * step
-        averDensity =  np.average(density[i])
-                
-        wCum += averDensity * areaElev # integrate
+    AreaCum = np.zeros_like(ElLim)
+    wAreaCum = 0. # for debugging, cumulative area integrated over
 
+    i = len(AzEl[1,:,0]) -1          # we start at zenith
+    elevationStep = AzEl[1,1,0] - AzEl[1,0,0] # step in elevation [deg]
+
+    while i >=0 and El_index < len(ElLim): # scan elevation rings
+        if AzEl[1,i,0] < ElLim[El_index] : # we are below the next ElLim
+            # close one of the requested elevations
+            ElCum[El_index] = wCum
+            AreaCum[El_index] = wAreaCum
+
+            log.debug(f'Closing ElLim={ElLim[El_index]:.2f} deg, with cumulative count {wCum:.2f} and area {wAreaCum:.2f} sq.deg')
+            El_index += 1
+        
+        # integrate current ring
+        wAreaCum += np.sum(  surface_El( AzEl[1,i,:], elevationStep))
+        
+
+        wCum += np.sum(  density[i] * 
+                         surface_El( AzEl[1,i,:], elevationStep))     # integrate
+    
         i -= 1 # next elevation ring
 
-    if Eli < len(ElCum):
-        ElCum[Eli] = wCum
+
+    if El_index < len(ElCum):
+        ElCum[El_index] = wCum
+        AreaCum[El_index] = wAreaCum
+
+        log.debug(f'FINAL: last integrated was {i+1} with elevation {AzEl[1,i+1,0]:.2f} deg, closing ElLim={ElLim[El_index]:.2f} deg, with cumulative count {wCum:.2f} and area {wAreaCum:.2f} sq.deg')
+        El_index += 1
+        
+
+    log.debug(f'ElLim={ElLim}')
+    log.debug(f'ElCum={ElCum}')
+    log.debug(f'AreaCum={AreaCum}')
     return ElCum
 
 #----------------------------------------------------------------------
@@ -346,36 +350,39 @@ def AltAz2Delta(obsLatitude,satAlt,AzEl):
     rs = constants.earthRadius+satAlt
     
     
-    # from Az, El to xyz equatorial
+    # from Az,El to xyz equatorial
     XYZ = Pol2Rec(AzEl,1.)
     xyz = AltAzEqu(obsLatitude,XYZ)
 
+
     # Delta equation:  Da Delta2 + Db Delta + Dc = 0
+    # Eq. BHG [A.23]:
     Da = 1.
-    Db = 2.*constants.earthRadius * (xyz[0] * np.cos(latr) + xyz[2] * sl)
+    Db = 2.*constants.earthRadius * (xyz[0] * cl + xyz[2] * sl)
     Dc = -satAlt*(satAlt + 2.* constants.earthRadius)
 
     # determinant of the equation
     Ddeterm = Db**2 - 4.* Da*Dc
 
     # solutions
-    Delta1 = (np.sqrt(Ddeterm) - Db)/2./Da
-    #Delta2 = (-np.sqrt(Ddeterm) - Db)/2./Da
+    Delta1 = (np.sqrt(Ddeterm) - Db)/2./Da # above ground solution
+    #Delta2 = (-np.sqrt(Ddeterm) - Db)/2./Da # opposite side of the Earth
     
-    # [7]: extract delta=latitude of satellite
+    # Eq. A.22: extract delta=latitude of satellite
     sindelta = (Delta1* xyz[2] + constants.earthRadius*sl )/ rs
     deltar = (np.arcsin(sindelta))
-    delta = np.degrees(deltar)
-    cd = np.cos(deltar)
+    delta  = np.degrees(deltar)
+    cd     = np.cos(deltar)
     
-    # [5,6]: extract alpha = long
+    # [A.20,A.21]: extract alpha = long
     alphax = (Delta1*xyz[0] + constants.earthRadius*cl)/cd/rs
-    alphay = (Delta1*xyz[1]        )/cd/rs
+    alphay = (Delta1*xyz[1]                           )/cd/rs
     alpha = np.degrees(np.arctan2(alphay,alphax))
     
-    # [10] costheta:
+
+    # [A.24] costheta:
+    # generic triangle: cosAngleA = ( b**2 + c**2 - a**2 )/2bc  -OK
     costheta = (rs**2 + Delta1**2 - constants.earthRadius**2 )/(2.*Delta1*rs)
-    
     
     return alpha, delta, Delta1, costheta
 
@@ -389,27 +396,23 @@ def fill_AzEl(step):
     '''
 
     El = np.arange(0.+step/2.,90.,step) # so that the 1st one is [0, step]
-    Az = np.arange(0,360.001,step)
+    Az = np.arange(0,360.0000001,step) # we need to close the circle for nice plots
     fillAz, fillEl = np.meshgrid(Az,El)
 
     return np.array([fillAz, fillEl])
 
 #----------------------------------------------------------------------
-def surface_AzEl(Az, El, step):
-    '''Surface [sq.deg] an element centred on AzEl, widdh=step
+def surface_El( El, step):
+    '''Surface [sq.deg] an element centred on (Az)El, 
+       width=step  in both Az and El
 
-    IN: Az, El, step [deg] 
+    IN: El, step [deg]   (Az is not relevant)
 
     OUT: surfaceAz [sqDeg]
     '''
+    w =   180./np.pi * step * (np.sin(np.radians(El + step/2.)) - np.sin(np.radians(El - step/2.)))
+    return w
 
-    radius = 180./np.pi
-    surface = 2.*np.pi* radius**2 # 1/2 sphere
-    surface *=  (np.sin(np.radians(El + step/2.)) - np.sin(np.radians(El - step/2.))) 
-         # difference of callotes; =2 for full range
-    surface *=  step/360. # longitude fraction
-
-    return surface
 #----------------------------------------------------------------------
 def radec2elev(ha,delta,obsLatitude):
     '''Elevation from HourAngle, Delta
