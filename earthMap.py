@@ -177,8 +177,6 @@ def main(args=None):
 
             # init arrays with the various results; same array geometry as AzEl 
             densSatAll = np.zeros_like(AzEl[0]) # density of satellites     (all sat)
-            #TBD# densSatObs = np.zeros_like(AzEl[0]) # density of satellites, only observable
-            #TBD# densVelObs = np.zeros_like(AzEl[0]) # velocity density of satellites, only observable
             elCount    = np.zeros_like(elLim )
 
 
@@ -188,7 +186,7 @@ def main(args=None):
                 # Scan the constellation shells
                 for myShell in CONSTELLATIONS.shells:                 
                     # model the shell
-                    densSi, veli, magi =  myShell.modelOneShell(AzEl,myLat, sunHA,sunDelta )
+                    densSi, _, _ =  myShell.modelOneShell(AzEl,myLat, sunHA,sunDelta )
                 
                     # all sat:
                     densSatAll += densSi
@@ -261,8 +259,6 @@ def main(args=None):
                 llcrnrlon=-180,urcrnrlon=180,
                 resolution='c')
 
-
-
     # convert long,lat to x,y; not critical for "cyl"
     xpt,ypt = m(fillPlotLong,fillPlotLat) 
 
@@ -306,7 +302,8 @@ def main(args=None):
                     linestyles='solid', 
                     colors='k')
         lsun = plt.clabel(csun, fmt='%.0f$^o$')
-
+        plt.scatter(180., sunDelta, marker='*', s=200, color='yellow', edgecolor='k', zorder=10)
+        plt.scatter(-180., sunDelta, marker='*', s=200, color='yellow', edgecolor='k', zorder=10, label='Sun')
 
 
     # Discrete satellites

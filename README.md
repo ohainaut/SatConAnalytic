@@ -9,6 +9,7 @@ v 2.0, 2026-Mar-01
   - [Setup files](#setup-files)
     - [Constellations](#constellations)
     - [Telescopes and Instruments](#telescopes-and-instruments)
+    - [Installation](#installation)
   - [Script Usage](#script-usage)
     - [obsSky](#obssky)
       - [Options](#options)
@@ -167,9 +168,15 @@ Photo:          Photographic Camera from Brussels
 ALMA:           ALMA beam
 ```
 
+### Installation
+
+Try ``make all``, which will pip install the package.
+
+Or run directly ``python yourPath/SatConAnalytics/obsSky.py``
+
 ## Script Usage
 
-This package comes with some ready-to-use scripts. They can use pre-defined instruments or define the instrument with command line parameters.
+This package comes with some ready-to-use scripts. They can use pre-defined instruments or define the instrument with command line parameters. The main function of most scripts can also be called from another script, see [batch mode](#batch-mode) below.
 
 
 
