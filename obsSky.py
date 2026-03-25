@@ -199,7 +199,6 @@ def main(args=None):
     myargs.shadeflag     = myargs.noshade
     myargs.scalebarflag  = myargs.noscalebar
     myargs.labelplotflag = myargs.nolabel
-    myargs.almucantar    = myargs.almuc
     if myargs.pdf :
         myargs.outputformat = ".pdf"
     else:
@@ -403,6 +402,7 @@ def main(args=None):
     log.info(f'Total number of satellites: {totalSat:.2f}')
     
 
+
     # FINISHED SCANNING THE SHELLS:
     # Now, we have the following arrays defined:
     #   densSatAll: dens in Nsat/sq.deg
@@ -442,10 +442,15 @@ def main(args=None):
 
 
     # sat count for almucantars
+    ###PRD###
     almucantars = [60.,30.,20., 10.,0.] #  elevation [deg]
-    almucantars = np.arange(85.,-1.,-5.) #  elevation [deg]
+    ###DBG###    almucantars = np.arange(90.,-1.,-1.) #  elevation [deg]
     almucantarCounts = caLib.integrateSat(almucantars,AzEl,densSatAll)
             # almucantarCounts: number of sat higher than almucantar
+    
+    almucantarDotsis = []
+    almucantarDotss = []
+    almucantarArea = []
 
     # initialize integrated values for various elev.
     effect_elev = [0., 20., 30.] # limits at which the effects are computed
@@ -825,11 +830,14 @@ def main(args=None):
         ax =  fig.subplots(1,1,subplot_kw={'projection': 'polar'}) 
         cpLib.initPolPlot(ax)
         ax.set_facecolor("k")
+
+
+        #DBG skyColor = (0,0,0)
         skyColor = cpLib.get_skyColor(sunElev)
-        
+
+
         #----------------------------------------------------------------------
         # conAn density plot
-
         if myargs.noconan:
             logDensity = np.zeros_like(AzEl[0]) - 1000.  # empty sky
         
@@ -973,8 +981,8 @@ def main(args=None):
 
 
 
-        # sat count on almucantars
-        if myargs.almucantar:
+        # sat count label on almucantars
+        if myargs.almuc:
             for we, wi in zip(almucantars, almucantarCounts):
                 cpLib.azlab(ax,
                             -0,(90.-we-5)/90.,
@@ -990,11 +998,14 @@ def main(args=None):
                 myargs.magSelect = "all"
             log.info(f'Plotting dots, selection: {myargs.magSelect}')
 
+            print(f'InDots: sunAlpha={sunAlpha:.2f}d, sunDelta={sunDelta:.2f}d, lat={myTel.lat:.2f}d, time={sunAlpha*240:.2f}s')
 
             Sv = satDots.makeConstellationStatTable(CONSTELLATIONS, 
                                                     sunAlpha, sunDelta, 
                                                     myTel.lat, 
-                                                    sunAlpha*240)#(180+sunAlpha)*360.) ## slowed 10x
+                                                    sunAlpha*240)
+                                            # sunAlpha[deg]*240 = [s]
+
             
 
 
@@ -1010,7 +1021,9 @@ def main(args=None):
                 Sb = Si[ Si["mag"] >= 7 ]
 
                 log.info(f'Plotting {len(Sb)} non-bright satellites (mag >= 7) in yellow')
-                ax.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], c="yellow", alpha=0.4)
+                ax.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], 
+                           c="yellow", alpha=0.9)
+
 
 
             if myargs.magSelect in ["all", "detected", "oversaturated"] :
@@ -1022,6 +1035,16 @@ def main(args=None):
                 Sb = Si[ Si["mag"] < 6 ]
                 log.info(f'Plotting {len(Sb)} bright satellites (mag < 6) in red')
                 ax.scatter(Sb["Azr"],Sb["ZD"], s=Sb["dot"], c="red")
+
+            for elev in almucantars:
+                counti = np.sum( (Sv["ZD"] < (90.-elev) ) & (Sv["bIlluminated"]) )
+                almucantarDotsis.append(counti)
+
+                count = np.sum( (Sv["ZD"] < (90.-elev) ) )
+                almucantarDotss.append(count)
+
+                area = (360.*180./np.pi *   (np.sin(np.radians(elev+.5)) - np.sin(np.radians(elev-.5)))    ) # area of the band in sq.deg
+                almucantarArea.append(area)
 
 
         if not myargs.noconan and not myargs.dots:
@@ -1044,6 +1067,8 @@ def main(args=None):
         log.debug('noPlot: No plot will be generated.')
 
  
+
+
     results = {
         'outfileroot': outfileroot,
         'meta': {
@@ -1067,7 +1092,14 @@ def main(args=None):
         'sat': {
             'elev': almucantars,
             'count': almucantarCounts,
-            'unit': 'integrated number of satellites above each elev'}
+            'dot_counti': almucantarDotsis,
+            'dot_count': almucantarDotss,
+            'area': almucantarArea,
+            'unit': 'integrated number of satellites above each elev'},
+        # 'density': {
+        #     'dens' : densSatAll[:,0],
+        #     'elev': AzEl[1,:,0]
+        #     }        
     }
     
     if myargs.output in ['losses', "trails"]:
@@ -1083,7 +1115,7 @@ def main(args=None):
         })
     
     log.info("...done.")
-    log.debug(f'Results: {results}')
+    #log.debug(f'Results: {results}')
 
 
     return results

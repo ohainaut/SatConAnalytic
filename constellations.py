@@ -91,7 +91,7 @@ def readConstellationFile(myFile):
      except FileNotFoundError:
           # If file not found, try to locate it in the same directory as this script
           script_dir = os.path.dirname(os.path.abspath(__file__))
-          fallback_path = os.path.join(script_dir, myFile)
+          fallback_path = os.path.join(script_dir, "Data", myFile)
           with open(fallback_path) as infile:
                return json.load(infile, object_hook=_Dict)
 
@@ -104,6 +104,7 @@ class OneShell():
               self.__dict__[x] = oneShellJS[x]
 
           self.nSat = int( self.totSat / self.nPlane + 0.5)
+          # original number nSat is not reliable.
 
           if not hasattr(self, 'mag550'):
                self.mag550 = cCst.mag550
@@ -114,14 +115,20 @@ class OneShell():
 
 
      def orbitalElementsTable(self):
-          '''create the orbital element table for each sat in the shell'''
+          '''create the orbital element table for each sat in the shell
+          
+          'anom0' : anomaly at t0 [rad],
+          'node0' : asce.node [rad],
+          'inc'   : inclination [rad],
+          'alt'   : altitude [km],
+          'omega' : angular velocity [rad/s],
+          'mag550': abs.mag at 550km
+          '''
 
           # node = ascending nodes of the planes
-          nodes = (random.random()*360#/self.nPlane # start the node at random place
-               + np.linspace(0.,360., self.nPlane, endpoint=False) )# [deg]
-
+          nodes =  np.linspace(0.,360., self.nPlane, endpoint=False) # [deg]
           satAnom0 = np.array([0.])  #- initialize some empty vectors
-          satNode0  = np.array([0.])
+          satNode0 = np.array([0.])
           satInc   = np.array([0.])
           satAlt   = np.array([0.])
           satomega = np.array([0.])
@@ -129,9 +136,10 @@ class OneShell():
 
           # create the planes
           for inode, node in enumerate(nodes): # cretes the various planes
-               wsatAnom0 = np.linspace(0.,360., self.nSat, endpoint=False) +  inode*360./self.nPlane # [deg] 
-               # Anom0 start the anomaly at "random" place.
-               # Remove the +  inode*... to start all planes at 0.
+
+
+               wsatAnom0 = np.linspace(0.,360., self.nSat, endpoint=False) + (20*inode)%(360./self.nSat)
+                    # +: so they don't all start at the same place
 
                wsatInc    = np.full_like(wsatAnom0, self.inc) # [deg]
                wsatNode0  = np.full_like(wsatAnom0, node) # [deg]
@@ -180,7 +188,7 @@ class OneShell():
           - illuminated satellite magnitudes
           '''
 
-
+          # reshape - some scripts use 2D meshes, some use 3D meshes.
           if len(AzEl.shape) == 3:
                AzElreshape = np.reshape(AzEl,(2,AzEl.shape[1]*AzEl.shape[2]))
                step = AzEl[1,1,0] - AzEl[1,0,0]
@@ -204,23 +212,38 @@ class OneShell():
           #         adjust angular size
           #         for distance, and
           #         for apparent orientation of the shell on line-of-sight
-          numDensity = cLib.satNumDensity1(delta,self.inc,self.totSat)
-          densitys = numDensity * (Delta/(cCst.earthRadius+self.alt))**2 / costheta 
-          
+
+          numDensity_Shell = cLib.satNumDensity_0(delta,self.inc,self.totSat)
+                    # in num/sq.deg on the shell
+
+          areaRatio = (Delta/(cCst.earthRadius+self.alt))**2 / costheta 
+               # area on the shell projected on the sky
+               # at Zenith: 
+               #   areaRatio = alt/(rsat) **2, 
+               # = 0.00630 for alt=550km. Verified OK.
+               # at horizon: 
+               #   sin(theta) = re/rs -> theta = 67dg -> cos(t) = 0.39
+               #   Delta2= rs2-re2 -> Delta = 2705 -> D2/rs2 = 0.15
+               #   ratio = Delta2/re2 / cos(theta) = 0.3905
+
+          numDensity_Sky = numDensity_Shell * areaRatio
+
+
           # Illuminated satellites
           illum = cLib.solIllum(xyz,sunAlpha, sunDelta)
-          wdensityi = densitys * illum
+          numDensity_illuminated = numDensity_Sky * illum
           
           #  MAGNITUDE of the satellites:
           
-          wmag =  self.mag550 + 5.*np.log10(Delta/550.)   # distances
-          wmag += cCst.extinction*(Delta/self.alt -1.)    # extinction
+          mag_visual =  self.mag550 + 5.*np.log10(Delta/550.)   # distances
+          mag_visual += cCst.extinction*(Delta/self.alt -1.)    # extinction
           
 
           return \
-               np.reshape(wdensityi,   (AzEl.shape[1],AzEl.shape[2]) ) ,\
+               np.reshape(numDensity_illuminated,
+                           (AzEl.shape[1],AzEl.shape[2]) ) ,\
                np.reshape(wAngularVel, (AzEl.shape[1],AzEl.shape[2]) ),\
-               np.reshape(wmag,        (AzEl.shape[1],AzEl.shape[2]) )
+               np.reshape(mag_visual,        (AzEl.shape[1],AzEl.shape[2]) )
 
 
 #----------------------------------------------------------------------------

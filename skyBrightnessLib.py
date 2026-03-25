@@ -1,9 +1,12 @@
+import logging
 import numpy as np
 from astropy.table import Table
 from astropy.io import ascii
 
 import SatConAnalytic.satDots as satDots
 import SatConAnalytic.conan as caLib
+
+log = logging.getLogger('satcon')
 
 # CONVERSIONS
 
@@ -122,7 +125,7 @@ def magarc2_to_luminance(magnitude_tarcsec2):
     return luminanceZP* 10**(-0.4 * magnitude_tarcsec2)
 
 darkSky_luminance = magarc2_to_luminance(darkSky_MpSA) # cd/m^2 for natural dark sky
-print(f'Dark sky luminance: {darkSky_luminance:.2e} cd/m^2')
+log.debug(f'Dark sky luminance: {darkSky_luminance:.2e} cd/m^2')
 
 def luminance_to_magarc2(luminance):
     """Convert luminance [cd/m^2] to surface brightness [mag/arcsec^2]."""
@@ -140,7 +143,7 @@ def luminance_to_lambert(luminance):
     """
     return luminance * 1e-4 * np.pi
 darkSky_lambert = luminance_to_lambert(darkSky_luminance) # Lambert for natural dark sky
-print(f'Dark sky brightness: {darkSky_lambert:.2e} Lambert')
+log.debug(f'Dark sky brightness: {darkSky_lambert:.2e} Lambert')
 
 
 def lambert_to_luminance(lambert):

@@ -1020,11 +1020,11 @@
         "shells" : {
             "ast1" : {
                 "label" :"1",
-                "totSat": 200000,
-                "nPlane": 500,
+                "totSat": 41253,
+                "nPlane": 150,
                 "nSat"  : 0,
-                "inc"   : 55.0,
-                "alt"   : 500.0,
+                "inc"   : 40.0,
+                "alt"   : 5500000.0,
                 "mag550": 7.0
             }
         }

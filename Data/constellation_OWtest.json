@@ -1,0 +1,16 @@
+[
+    {
+        "name" : "OneWeb_TEST",
+        "code" : "OWtest",
+        "comment" : "OneWeb/Eutelsat test constellation",
+        "shells" : {
+            "ow1" : {
+                "label" :"owTest1",
+                "totSat": 64800,
+                "nPlane": 12,
+                "nSat"  : 0,
+                "inc"   : 88,
+                "alt"   : 1200.0}
+        }
+    }
+]

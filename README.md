@@ -171,6 +171,8 @@ ALMA:           ALMA beam
 
 This package comes with some ready-to-use scripts. They can use pre-defined instruments or define the instrument with command line parameters.
 
+
+
 ### obsSky
 
 
@@ -312,8 +314,10 @@ Plot options:
 
 _Figure: This is a map of the sky above the observatory (in this case, the VLT), zenith at the centre, horizon as the rim. The color scale shows the number of satellite trails crossing the observation (in this case, a 300s image with a field of 6arcmin). The grey circles are at 10, 20, and 30deg of elevation. The red grid is the right ascension (hour angle) and declination.
 The black area marks the part of the sky where all satellites are in the earth shadow (hence invisible). The horizontal (east-west) bands mark the "edge" of the sub constellations.
-In this example, a realization of the satellite position is overplotted (the size of the dot represent the satellite's magnitude. Red dots are brighter than 7).
+In this example, a realization of the satellite position is overplotted (the size of the dot represent the satellite's magnitude. Red dots are brighter than 6, orange brighter than 7).
 obsSky can also generate maps of the satellite density (sat/sq.deg), and map of data losses._
+
+
 
 - For the same conditions, plot the contribution of the satellites to the diffuse sky background. All satellites (i.e. all fainter than -99) are taken into account.
 

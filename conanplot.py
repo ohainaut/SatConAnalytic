@@ -38,6 +38,9 @@ csunmap = LinearSegmentedColormap.from_list("mycmap", colors)
 #------------------------------------------------------------------------------
 def init_logger(log):
     log.setLevel(logging.DEBUG)
+    log.propagate = False
+    if log.handlers:
+        return
 
     # Format
     log_format = logging.Formatter('[%(levelname)-8s %(name)s/%(funcName)s] %(message)s')

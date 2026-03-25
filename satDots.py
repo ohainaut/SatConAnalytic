@@ -35,11 +35,11 @@ import SatConAnalytic.constellations as constLib
 outpath = "/home/ohainaut/public_html/outsideWorld/"
 #outpath = "./"
 
-logging.basicConfig(filename='conan.log',  
+logging.basicConfig(filename='satCon.log',  
                     level=logging.INFO,
                     format='[%(levelname)-8s %(name)s/%(funcName)s] %(message)s')
 
-log = logging.getLogger('conan')
+log = logging.getLogger('satcon')
 #==============================================================================
 def propagateTimeAnom(anom0, omega, times):
     '''Rotate the satellites on their orbit
@@ -284,14 +284,17 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times, a
     SAT = CONSTELLATIONS.Table
 
 
-    m550Max = np.max(SAT["mag550"])
     log.info(f'Mag at 550km: mean={np.mean(SAT["mag550"]):.1f}')
 
     # revolution of the sat
-    SAT["anomr"] = propagateTimeAnom(SAT["anom0"], SAT["omega"], times/slowSatRev) + anom0
 
-    # rotation of the Earth
-    SAT["noder"] = propagateTimeNode(SAT["node0"], times/slowEarthRot)
+    if 1: # propagate the satellites on their orbits and the Earth rotation
+        SAT["anomr"] = propagateTimeAnom(SAT["anom0"], SAT["omega"], times/slowSatRev) + anom0
+        SAT["noder"] = propagateTimeNode(SAT["node0"], times/slowEarthRot)
+
+    else: # stationary satellites
+        SAT["anomr"] = SAT["anom0"]
+        SAT["noder"] = SAT["node0"]
 
     SAT["latr"],SAT["longr"] = elementsToLongLat(SAT["noder"], SAT["inc"], SAT["anomr"])
     SAT["xg"],SAT["yg"],SAT["zg"]   = LongLatToGeoXYZ(SAT["alt"], SAT['latr'], SAT["longr"])
@@ -336,9 +339,9 @@ def makeConstellationStatTable(CONSTELLATIONS, sunAlpha, sunDelta, lat, times, a
     Sv["bIlluminated"] =illuminatedSat(Sv["xg"],Sv["yg"],Sv["zg"], sunAlpha, sunDelta) 
 
     # distance, Az, ZD
-    Sv["Delta"] = topoXYZToDelta( Sv["xt"],Sv["yt"],Sv["zt"] )
+    Sv["Delta"]        = topoXYZToDelta( Sv["xt"],Sv["yt"],Sv["zt"] )
     Sv["Azr"],Sv["ZD"] = topoXYZToAzrZD( Sv["xt"],Sv["yt"],Sv["zt"],
-                                        Delta=Sv["Delta"]) 
+                                             Delta=Sv["Delta"]) 
 
     Sv["mag"] = satMag(Sv["xt"],Sv["yt"],Sv["zt"] , Sv["alt"],  
                        mag550=Sv["mag550"],

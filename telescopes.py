@@ -28,7 +28,7 @@ def readTelescopeFile(myFile):
      except FileNotFoundError:
           # If file not found, try to locate it in the same directory as this script
           script_dir = os.path.dirname(os.path.abspath(__file__))
-          fallback_path = os.path.join(script_dir, myFile)
+          fallback_path = os.path.join(script_dir, "Data", myFile)
           with open(fallback_path) as infile:
                tels =  json.load(infile, object_hook=_Dict)
           log.info(f"telescope definitions from fallback {fallback_path}")
