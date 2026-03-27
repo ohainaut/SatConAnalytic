@@ -12,11 +12,7 @@ import json
 import os
 log = logging.getLogger('satcon')
 
-class _Dict(dict):
-    '''convenience: access dict as dict.element.element'''
-    __getattr__= dict.__getitem__
-    __setattr__= dict.__setitem__
-    __delattr__= dict.__delitem__
+from SatConAnalytic.utils import _Dict
 
 def readTelescopeFile(myFile):
      '''read telescope json file'''
@@ -130,6 +126,57 @@ class Telescopes():
 def readTelescopes( file='telescopes.json'):
      allTel = readTelescopeFile(file)
      return  Telescopes( allTel )
+
+
+#------------------------------------------------------------------------------
+def findTelescope(telinslabel):
+     '''Find and return a Telescope object by its code label.'''
+     allTel = readTelescopes()
+     try:
+          return allTel.byCode[telinslabel]
+     except KeyError:
+          if telinslabel != 'list':
+               print(f'{telinslabel} not found in telescope list')
+          print('Available telescopes are:')
+          for x in sorted(allTel.list):
+               print(f'  {x}')
+          exit(1)
+
+
+#------------------------------------------------------------------------------
+def getTelescope(myargs):
+     '''Return the Telescope object requested by myargs.
+
+     The telescope is defined by the ``code`` argument; individual parameters
+     in myargs then overload the presets.  myargs is an argparse Namespace.
+     '''
+
+     if myargs.code is None:
+          myargs.code = 'DEFAULT'
+
+     myTel = findTelescope(myargs.code)
+
+     for what in ['telescope', 'instrument']:
+          if myargs.__dict__[what] is not None:
+               myTel.__dict__[what] = myargs.__dict__[what]
+
+     if myargs.expt is not None:
+          myTel.expt = float(myargs.expt)
+     if myargs.fovl is not None:
+          myTel.fovl = float(myargs.fovl)
+     if myargs.fovw is not None:
+          myTel.fovw = float(myargs.fovw)
+
+     if myargs.fovw is not None:
+          myTel.fovw = float(myargs.fovw)
+     else:
+          myTel.fovw = myTel.fovl * 1.
+
+     for what in ['expt', 'fovl', 'magbloom', 'maglim', 'resol', 'trailf', 'lat']:
+          if what in myargs.__dict__ and myargs.__dict__[what] is not None:
+               myTel.__dict__[what] = float(myargs.__dict__[what])
+
+     return myTel
 
 
 if __name__ == "__main__":

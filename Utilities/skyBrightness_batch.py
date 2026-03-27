@@ -2,6 +2,7 @@ import numpy as np
 
 import skyBrightness
 import SatConAnalytic.conanplot as cpLib
+import SatConAnalytic.utils as utLib
 
 
 def fillArgs(args, CONST, a, o):
@@ -54,7 +55,7 @@ def run_sequence():
     # write results to file
     import json
     with open(f"skyBrightness_{CONST}.json", "w") as f:
-        json.dump(results, f, indent=4, cls=cpLib.NumpyEncoder) 
+        json.dump(results, f, indent=4, cls=utLib.NumpyEncoder) 
 
 
 if __name__ == "__main__":

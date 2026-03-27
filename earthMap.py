@@ -26,6 +26,8 @@ from astropy.table import  vstack
 
 import SatConAnalytic.conan as caLib
 import SatConAnalytic.conanplot as cpLib
+import SatConAnalytic.telescopes as telescopeLib
+import SatConAnalytic.utils as utLib
 import SatConAnalytic.satDots as satDots
 import SatConAnalytic.constellations as constLib
 
@@ -44,6 +46,10 @@ def create_argument_parser():
     elLim = np.array([60.,30.,20., 10.,0.])
     choices=[f'{e:.0f}' for e in elLim]
 
+    parser.add_argument('-a','--sunAlpha', default=0.,
+                    help="Sun: longitude of the Sun [deg]")
+
+
     parser.add_argument('-d','--deltaSun', default=-20.,
                     help="Sun: Declination of the Sun [deg]")
 
@@ -53,6 +59,9 @@ def create_argument_parser():
     parser.add_argument('--constFile', default="constellations.json",
                         help="Constellation: Which constellation file to use (default: constellations.json)")
     
+    parser.add_argument('--log', action='store_true',
+                        help="log scale")
+
     parser.add_argument('--dots', action='store_true',
                         help="Plot: Plot the satellite dots")
 
@@ -218,7 +227,6 @@ def main(args=None):
         fillLong.tofile(       dirName+'/fillLong.dat')
         fillLat.tofile(        dirName+'/fillLat.dat')
         fillSatCount.tofile(   dirName+'/fillSatCount.dat')
-        #TBD# fillSatObsCount.tofile(dirName+'/fillSatObs.dat')
         fillSunElev.tofile(    dirName+'/fillSunElev.dat')
 
 
@@ -230,7 +238,7 @@ def main(args=None):
 
 
 
-    ## PLOT ##
+    log.info('====CONVERSIONS================================')
 
     # reshape output for map:
     # duplicate each point of the half-map to get full map coverage
@@ -239,7 +247,16 @@ def main(args=None):
     fillPlotLat, fillPlotLong = np.meshgrid(plotLat, plotLong)
     fillPlotSunElev           = np.concat( [fillSunElev, fillSunElev[::-1,:]] )
     fillPlotSatCount          = np.concat( [fillSatCount,  fillSatCount[::-1,:,:] ])
-    #TBD# fillPlotSatObsCount       = np.concat( [fillSatObsCount,  fillSatObsCount[::-1,:,:]] )
+
+
+    # adjust the position of the sun according to the input sunAlpha
+    sunAlphaNew = (sunAlpha + float(myargs.sunAlpha))%360. # [deg], solar time UT
+    sunAlphaStep = int(sunAlphaNew / groundStep + 0.5)
+    print(f'sunAlpha: {sunAlpha:.1f} -> {sunAlphaNew:.1f} (step {sunAlphaStep})')   
+
+    # shift the maps by the corresponding number of steps
+    fillPlotSunElev = np.roll(fillPlotSunElev, sunAlphaStep, axis=0)
+    fillPlotSatCount = np.roll(fillPlotSatCount, sunAlphaStep, axis=0)
 
 
     # which elevation cutoff to plot
@@ -247,6 +264,11 @@ def main(args=None):
 
     # select the observable satellite count above elevation cutoff
     plotIt = fillPlotSatCount[:,:,elevCut]
+
+
+    # log scale
+    if myargs.log:
+        plotIt = np.log10( plotIt + 0.1) # +1 to avoid log(0)
 
     # Flag points in day-time 
     plotIt[ fillPlotSunElev > 0.] = -1.
@@ -276,14 +298,24 @@ def main(args=None):
 
         # beautify color bar
         cbar = m.colorbar(cs,location='bottom',pad="5%")
-        clevels = np.arange(0., 
+        if myargs.log:
+            clevels = np.arange(0., 
+                            int( mymax + 1. ),
+                            int(mymax -1.)/5)
+            clevels = clevels[ clevels < mymax ]
+            clabel = [ f'{10.**l:.0f}' for l in clevels]
+
+        else:
+            clevels = np.arange(0., 
                             10.**(int(np.log10( mymax )))*9.,
                             10.**(int(np.log10( mymax )-1.)))
-        clevels = clevels[ clevels < mymax ]
+            clevels = clevels[ clevels < mymax ]
+            clabel = [ f'{l:.0f}' for l in clevels]
+
         while len(clevels) > 20:
             clevels = clevels[::2]
+            clabel = clabel[::2]
 
-        clabel = [ f'{l:.0f}' for l in clevels]
         cbar.set_ticks(clevels)
         cbar.set_ticklabels(clabel)
         cbar.set_label(f'Number of Sat above {elLim[elevCut]:.0f}'+u'$^o$ elevation')
@@ -321,7 +353,7 @@ def main(args=None):
         SAT["longr"] = SAT["longr"] -np.pi
         SAT["xPt"], SAT["yPt"]  = m(np.degrees(SAT["longr"]), np.degrees(SAT["latr"] ))
         m.scatter(SAT["xPt"], SAT["yPt"], c=SAT["bIlluminated"] , 
-                cmap='YlOrRd_r',marker='.', s=1, alpha=0.75)
+                cmap='YlOrRd_r',marker='.', s=1, alpha=0.25)
 
 
     m.drawcoastlines(linewidth=0.5, color='g')# Sun and twilights
@@ -334,16 +366,15 @@ def main(args=None):
 
 
 
-    plt.savefig( dirName + f'/satObs_{myargs.elevCut}.pdf')
+    plt.savefig( dirName + f'/satObs_{myargs.elevCut}{myargs.outputformat}')
     plt.savefig( 'w.png')
-    print(f'Figure in {dirName}/satObs_{myargs.elevCut}.pdf')
-    #plt.show()
+    print(f'Figure in {dirName}/satObs_{myargs.elevCut}{myargs.outputformat}')
 
 
 
 if __name__ == "__main__":
 
-    cpLib.init_logger(log)
+    utLib.init_logger(log)
     log.info('===EarthMap===')
 
 

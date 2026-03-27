@@ -35,6 +35,8 @@ import numpy as np
 # import ConAn routines
 import SatConAnalytic.conan as caLib
 import SatConAnalytic.conanplot as cpLib
+import SatConAnalytic.telescopes as telescopeLib
+import SatConAnalytic.utils as utLib
 import SatConAnalytic.satDots as satDots
 import SatConAnalytic.skyBrightnessLib as skyLib
 import SatConAnalytic.constellations as constLib
@@ -223,7 +225,7 @@ def main(args=None):
     #===========================================================================
 
     log.info('=====TELESCOPE/INSTRUMENT SETUP================================')
-    myTel = cpLib.getTelescope(myargs)
+    myTel = telescopeLib.getTelescope(myargs)
     log.debug(myTel)
     
     #===========================================================================
@@ -294,30 +296,21 @@ def main(args=None):
     elementArea  = caLib.surface_El( AzEl[1], step) 
                                             # area of each element in sq.deg
 
-    # Arrays with the various results; same array geometry as AzEl 
-    densSatAll = np.zeros_like(AzEl[0])    # density of satellites     (all sat)
-    densVelAll = np.zeros_like(AzEl[0])    # density of satVelocities (all sat)
-    densSatObs = np.zeros_like(AzEl[0])    # density of Observable satellites (brighter than limiting mag)
-    densVelObs = np.zeros_like(AzEl[0])    #                       satVel
-    densSatBloom = np.zeros_like(AzEl[0])  # density of blooming satellites  (brighter than bloom limit)
-    densVelBloom = np.zeros_like(AzEl[0])  #                     satVel
+    # Arrays with the various results packaged as a SIM_DENSITIES dataclass object; same array geometry as AzEl 
+    SIM = cpLib.init_output(AzEl)
 
-    luminanceUnresolved_tot = np.zeros_like(AzEl[0])  # total flux (for all sat)  
-    luminanceUnresolved_totNotDet = np.zeros_like(AzEl[0])  # total flux (for faint sat)  
 
+    # Additional arrays for debug and checks:
     totMag_element = np.zeros_like(AzEl[0])  # total mag of all sat in element (for debug)
     totFlux_element = np.zeros_like(AzEl[0])  # total flux of all sat in element (for debug)
-
     nSat_element = np.zeros_like(AzEl[0])  # number of satellites in the element; for debug
 
     mag_max    = -99.
     mag_min    =  99.
     mageff_max = -99.
     mageff_min =  99.
-
     mag550_min = 9999.
     mag550_max = -9999.
-
     amag=0.
 
     # Scan the constellation shells
@@ -330,9 +323,12 @@ def main(args=None):
         densSi, veli, magi =  myShell.modelOneShell(AzEl,myTel.lat, sunAlpha,sunDelta )
 
         # out: 
-        # -ensSi:  density of illuminated satellites in the element (Nsat/sq.deg)
-        # -veli:   velocity of satellites in the element (deg/sec)
-        # -magi:   magnitude of satellites in the element (as if illuminated even if not illuminated; for debug)
+        # - ensSi:  density of illuminated satellites in the element 
+        #           (Nsat/sq.deg)
+        # - veli:   velocity of satellites in the element (deg/sec)
+        # - magi:   magnitude of satellites in the element 
+        #           (as if illuminated even if not illuminated; for plot)
+
 
         # process and integrate the shell:
 
@@ -353,20 +349,20 @@ def main(args=None):
 
 
         # all sat:
-        densSatAll += densSi
-        densVelAll += densSi * veli
+        SIM.satAll += densSi
+        SIM.velAll += densSi * veli
 
         # observable Sat:
         densSobsi = np.copy(densSi)
         densSobsi[ mageffi > myTel.maglim] = 0.
-        densSatObs += densSobsi
-        densVelObs += densSobsi * veli
+        SIM.satObs += densSobsi
+        SIM.velObs += densSobsi * veli
         
         # super bright bloomer satellites:
         densSbloomi = np.copy(densSi)
         densSbloomi[ mageffi > myTel.magbloom ] = 0.
-        densSatBloom += densSbloomi
-        densVelBloom += densSbloomi * veli
+        SIM.satBloom += densSbloomi
+        SIM.velBloom += densSbloomi * veli
 
         #luminance from the satellites in the Element:
         #   f = lumZP*10^(-0.4*mag)   
@@ -376,8 +372,8 @@ def main(args=None):
         lumini = skyLib.luminanceZP *10.**(-0.4*magi) * densSi /3600.**2 
         luminNotDeti = lumini.copy()
         luminNotDeti[ mageffi <= myTel.maglim] = 0.  # only the faint ones
-        luminanceUnresolved_tot       += lumini
-        luminanceUnresolved_totNotDet += luminNotDeti
+        SIM.luminance       += lumini
+        SIM.luminanceNotDet += luminNotDeti
 
         # total flux of all sat in the element:
         # (essentially the same info as luminance_tot;
@@ -404,29 +400,25 @@ def main(args=None):
 
 
     # FINISHED SCANNING THE SHELLS:
-    # Now, we have the following arrays defined:
-    #   densSatAll: dens in Nsat/sq.deg
-    #   densVelAll: density if trails in Ntrail/deg/sec
-
-    #   densSatObs: same, only for sat with mag < myTel.maglim
-    #   densVelObs:
-    
-    #   densSatBloom: same, only for sat with mag < myTel.magbloom
-    #   densVelBloom
-    
-    #   luminanceUnresolved_tot: luminance from the unresolved satellites in element, Cd/m^2. 
-    #   luminanceUnresolved_totNotDet: luminance from the unresolved satellites not detected in element, Cd/m^2. 
-    #   totFlux: in W/m2, Vband, total flux in the element.
+    # All per-element densities are now in SIM (SIM_DENSITIES):
+    #   SIM.satAll:          N/sq.deg, all satellites
+    #   SIM.velAll:          N/deg/s,  all satellites
+    #   SIM.satObs:          N/sq.deg, V_eff < maglim
+    #   SIM.velObs:          N/deg/s,  V_eff < maglim
+    #   SIM.satBloom:        N/sq.deg, V_eff < magbloom
+    #   SIM.velBloom:        N/deg/s,  V_eff < magbloom
+    #   SIM.luminance:       Cd/m², all unresolved satellites
+    #   SIM.luminanceNotDet: Cd/m², unresolved & undetected satellites
 
 
     log.info(f'Constellation density calculation done.')
     log.debug(f'Satellite magnitudes in [{mag_max:.2f},{mag_min:.2f}]')
     log.debug(f'Satellite eff. mag.  in [{mageff_max:.2f},{mageff_min:.2f}]')
     log.debug(f'Following output for zenith: (AzAlt={AzEl[:,-1,-1]})')
-    log.debug(f'- Sat density [n/sq.dg] {round( densSatAll[-1,-1],  4)}')
+    log.debug(f'- Sat density [n/sq.dg] {round( SIM.satAll[-1,-1],  4)}')
     log.debug(f'- Sat velocity (for last constellation) [deg/s] {round(veli[-1,-1],4)}')  
-    log.debug(f'- Diffuse mag               [mag/sq/arcsec]: {skyLib.luminance_to_magarc2(luminanceUnresolved_tot[-1,-1]):.2f}' )
-    log.debug(f'- Diffuse mag of notDet sat [mag/sq/arcsec]: {skyLib.luminance_to_magarc2(luminanceUnresolved_totNotDet[-1,-1]):.2f}' )
+    log.debug(f'- Diffuse mag               [mag/sq/arcsec]: {skyLib.luminance_to_magarc2(SIM.luminance[-1,-1]):.2f}' )
+    log.debug(f'- Diffuse mag of notDet sat [mag/sq/arcsec]: {skyLib.luminance_to_magarc2(SIM.luminanceNotDet[-1,-1]):.2f}' )
     
 
 
@@ -437,15 +429,11 @@ def main(args=None):
     #===========================================================================
 
 
-    # default colormap; overwritten later for special cases
-    cmap = "magma"
-
-
     # sat count for almucantars
     ###PRD###
     almucantars = [60.,30.,20., 10.,0.] #  elevation [deg]
     ###DBG###    almucantars = np.arange(90.,-1.,-1.) #  elevation [deg]
-    almucantarCounts = caLib.integrateSat(almucantars,AzEl,densSatAll)
+    almucantarCounts = caLib.integrateSat(almucantars,AzEl,SIM.satAll)
             # almucantarCounts: number of sat higher than almucantar
     
     almucantarDotsis = []
@@ -462,11 +450,6 @@ def main(args=None):
     idx_30 = np.argmin( np.abs( AzEl[1][:,0] -30. ) )
 
 
-
-
-
-
-
     # Calculate local time
     locTime_h = (sunAlpha/15.+12.)%24
 
@@ -474,61 +457,28 @@ def main(args=None):
     # Select effective densities depending on the requested output:
     #   ds: density of satellites;
     #   dv: density of satellite trails (i.e. density of satellites * velocity)
-    ds, dv, selectionLab =cpLib.magSelect(myargs.magSelect, 
-                    densSatAll, densVelAll, 
-                    densSatObs, densVelObs, 
-                    densSatBloom, densVelBloom,
-                    myTel)
+    ds, dv, selectionLab = cpLib.magSelect(myargs.magSelect, SIM, myTel)
 
 
 
     log.info('=====DENSITY CONVERSION========================================')
 
-    # ==output==
-    # Compute what to plot (--> logDensity)
-    # Set the info for the colorbar.
-
     #--------------------------------------------------------------------------
-    if 0:
-        log.info('DEBUG')
-        logDensity = -skyLib.flux_to_magnitude( totFlux_element)
-        barLabel = 'DEBUG: MAG'
+    if  myargs.output == "TrailDens":
 
-        barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_negMag(logDensity)
-
-
-    elif myargs.output == "TrailDens":
-        log.info("-> Trail Density")
-        barLabel = "Trail/deg/sec."
-        codeTitle = ["Trail","density"]
-        myUnit = "Trail/deg/s"
-        logDensity = cpLib.log10Sky( dv )
-        barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.LsetBarLim_standardLog(logDensity)
-
-        pick_zenith = dv[-1,0]
-        pick_sun30 = dv[idx_30, idx_sunAz]
-        log.info(f'At zenith: {pick_zenith:.2e} {barLabel}')
-        log.info(f'At Az={sunAz:.1f}d, El=30d: {pick_sun30:.2e} {barLabel}')
+        OUT = cpLib.output_TrailDens(dv)
 
     #--------------------------------------------------------------------------
     elif myargs.output == "satDens":
-        log.info("-> Sat Density")
-        barLabel = "Number of sat./sq.deg."
-        codeTitle = ["Satellite","density"]
-        myUnit = "sat./sq.deg."
 
-        logDensity = cpLib.log10Sky( ds )
-        barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(logDensity)
-
-        pick_zenith = ds[-1,0]
-        pick_sun30 = ds[idx_30, idx_sunAz]
-        log.info(f'At zenith: {pick_zenith:.2e} {barLabel}')
-        log.info(f'At Az={sunAz:.1f}d, El=30d: {pick_sun30:.2e} {barLabel}')
+        OUT = cpLib.output_satDens(ds)
 
     #--------------------------------------------------------------------------
     elif myargs.output == "skyScattered":
-        log.info("-> skyBrightness for scattered light...")
-        codeTitle = ["Scattered","brightness"]
+
+        OUT = cpLib.SIM_CONVERSION_OUT( )
+            # empty dataclass; will be filled.
+
 
         # total mag  in each element
         magV_element = skyLib.flux_to_magnitude( totFlux_element)
@@ -540,7 +490,8 @@ def main(args=None):
         #     magV_element[ 45, 90] = -12.7  # for debug: set a bright element at Az=90, El=45
 
         
-        surfBrightness = np.zeros_like(AzEl[0]) # initialize surface brightness array
+        surfBrightness = np.zeros_like(AzEl[0]) 
+                       # initialize surface brightness array
 
         # Scattering
 
@@ -552,7 +503,6 @@ def main(args=None):
             for i_elementAz, elementAz in enumerate(AzEl[0,i_elementEl,:]): 
                                             # scan azimuths
 
-                #print(i_elementEl, elementEl, i_elementAz, elementAz)
                 theta_grid = skyLib.angular_distance(
                     AzEl[1], AzEl[0], 
                     elementEl, elementAz)
@@ -614,73 +564,20 @@ def main(args=None):
                 barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(logDensity)                            
 
         barLabel = 'Surface brightness ['+ myUnit + ']'
-        pick_zenith = skyBrightness[-1,0]
-        pick_sun30  = skyBrightness[idx_30, idx_sunAz]
 
-        log.info(f'At zenith: {pick_zenith:.2e} {myUnit}')
-        log.info(f'At Az={sunAz:.1f}d, El=30d: {pick_sun30:.2e} {myUnit}')
-
-
+        OUT.unit          = myUnit
+        OUT.barLabel      = barLabel
+        OUT.barTicks      = barTicks
+        OUT.barTickLabels = barTickLabels
+        OUT.logMinValue   = logMinValue
+        OUT.logMaxValue   = logMaxValue
+        OUT.title          = "Scattered brightness"
+                
 
     #--------------------------------------------------------------------------
     elif myargs.output == "skyDiffuse": 
-        log.info("-> skyBrightness for unresolved satellites...")
-        codeTitle = ["Diffuse","brightness"]
 
-        # luminanceUnresolved_totNotDet in Cd/m^2.
-        # Unit conversion:
-        if myargs.unit == 'magarcsec2':
-            log.info("...SkyMagArcsec2")
-            myUnit = "MpSA"
-            skyBrightness = skyLib.luminance_to_magarc2( luminanceUnresolved_totNotDet ) 
-
-            logDensity = - skyBrightness
-            barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_negMag(logDensity)
-
-        else:
-            if myargs.unit == 'frac':
-                log.info("...fraction of sky brightness")
-                myUnit = 'fraction of dark sky'
-                skyBrightness = skyLib.luminance_to_skyFraction( luminanceUnresolved_totNotDet ) 
-
-                logDensity = cpLib.log10Sky( skyBrightness ) 
-                
-                cmap = gyrd    
-
-                logMinValue = -4.2  # log limits for the colour scale
-                logMaxValue = 0.1  # 2.2
-                barMin = int(logMinValue*3.)/3. 
-                barMax = int(logMaxValue*3. -1)/3.
-                barTicks = np.arange(barMin, barMax , .333333)
-                barTickLabels = [ f'{x:.1g}' for x in 10.**barTicks]
-
-
-            else:
-                if myargs.unit == 'microCandelaPerM2':
-                    log.info("...microCandela/m2")
-                    myUnit =  r'$\mu$cd/m$^2$'       # raw string for LaTeX
-                    skyBrightness = luminanceUnresolved_totNotDet * 1e6
-                        # convert to microCandela/m2 
-
-                elif myargs.unit == 'nanoLambert':
-                    log.info("...nanoLambert")
-                    myUnit = 'nL'
-                    skyBrightness = skyLib.luminance_to_lambert( luminanceUnresolved_totNotDet ) * 1e9
-                        # convert to nanoLambert           
-
-                logDensity = cpLib.log10Sky( skyBrightness ) 
-                barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(logDensity)
-
-
-        barLabel = 'Surface brightness ['+ myUnit + ']'
-        pick_zenith = skyBrightness[-1,0]
-        pick_sun30  = skyBrightness[idx_30, idx_sunAz]
-
-        log.info(f'At zenith: {pick_zenith:.2e} {myUnit}')
-        log.info(f'At Az={sunAz:.1f}d, El=30d: {pick_sun30:.2e} {myUnit}')
-
-
-
+        OUT = cpLib.output_skyDiffuse(myargs.unit, SIM.luminanceNotDet)
 
     #--------------------------------------------------------------------------
     elif myargs.output == "losses":
@@ -689,25 +586,15 @@ def main(args=None):
         For blooming satellites: trailF = 1, full FoV is affected; 
                 (1-trailF) bc trailF is already accounted for.
         '''
-        log.info("-> fraction lost...")
-        log.info("...overrides magSelect with losses")
-        codeTitle = ["Fraction","of FoV","lost"]
 
-        ds = myTel.trailf * densSatObs + (1.-myTel.trailf)* densSatBloom
-        dv = myTel.trailf * densVelObs + (1.-myTel.trailf)* densVelBloom
+        OUT = cpLib.output_losses( SIM, myTel)
+        
         selectionLab  = 'Selection: all satellites, scaled for losses. '
         selectionLab += f'Detected: V$_{{eff}}$ < {myTel.maglim:.1f} '
         selectionLab += f'Bleeding: V$_{{eff}}$ < {myTel.magbloom:.1f}'
 
-        # density: number of satellites in the FoV, 
-        #          plus number of trails crossing FoV during the exposure
-        #          accounting for trailF and blooming:
-        dens    =  ds* myTel.fovl*myTel.fovw + dv * myTel.fovl * myTel.expt
 
-
-        # deal with empty sky
-        logDensity = cpLib.log10Sky(dens)
-
+        dens = OUT.density
 
         # compute average and total losses
         for i in np.arange(0,len( AzEl[1,:,1]) ): # scan elevation rings
@@ -733,46 +620,22 @@ def main(args=None):
 
 
         log.info(f'losses on exposures (at Zenith      ): Loss fraction: {dens[-1,-1]:.5g}/1.')
-        
-        # bar info:
-        barLabel = "Fraction of FoV lost"
-        cmap = gyrd    
-        
-        logMinValue = -3.5  # log limits for the colour scale
-        logMaxValue = 0.5  # 2.2
-        barMin = int(logMinValue*3.)/3. 
-        barMax = int(logMaxValue*3. -1)/3.
-        barTicks = np.arange(barMin, barMax , .333333)
-        barTickLabels = [ f'{x:.1g}' for x in 10.**barTicks]
-
-        pick_zenith = dens[-1,0]
-        pick_sun30  = dens[idx_30, idx_sunAz]
-        myUnit = 'fraction lost'
-
-
 
     #--------------------------------------------------------------------------
     elif myargs.output == "trails":
         log.info("-> number of trails/exp...")
-        codeTitle = ["Trails per","exposure"]
     
-        # density: number of satellites in the FoV, 
-        #          plus number of trails crossing FoV during the exposure.
-        #          Magnitude selection already applied in ds and dv.
-        dens    =  ds* myTel.fovl*myTel.fovw + dv * myTel.fovl * myTel.expt
-
-
-        # deal with empty sky
-        logDensity = cpLib.log10Sky(dens)
+        OUT = cpLib.output_trails( ds, dv, myTel)
 
         # compute average and total trails
+        dens = OUT.density
         for i in np.arange(0,len( AzEl[1,:,1]) ): # scan elevation rings
 
             # Compute total trails in ring:
             # Need to multiply each element's density by its surface area
             # At given elevation, all elements have the same surface area
             ringElement_area  = caLib.surface_El(AzEl[1,i,0], step)
-            ring_trails   = np.sum( dens[i,:]    * ringElement_area )
+            ring_trails   =     np.sum( dens[i,:]    * ringElement_area )
 
             # integrate above effect limits:
             for ieffect in np.arange(0,len(effect_elev)):
@@ -790,22 +653,20 @@ def main(args=None):
 
         log.info(f'Trails on exposures (at Zenith):  Trails: {dens[-1,-1]:.5g} trails/exp')
         
-
-        # bar info:
-        barLabel = "Number of trails per exp."
-        barTicks, barTickLabels, logMinValue, logMaxValue = cpLib.setBarLim_standardLog(logDensity)
-
-        pick_zenith = dens[-1,0]
-        pick_sun30  = dens[idx_30, idx_sunAz]
-        myUnit = 'trails/exp'
-        log.info(f'At zenith: {pick_zenith:.2e} {myUnit}')
-        log.info(f'At Az={sunAz:.1f}d, El=30d: {pick_sun30:.2e} {myUnit}')
-
-
     #--------------------------------------------------------------------------
     else:
         log.error(f'Invalid output type {myargs.output}')
         exit(1)
+
+
+
+    pick_zenith = OUT.density[-1,0]
+    pick_sun30 = OUT.density[idx_30, idx_sunAz]
+    log.info(f'At zenith: {pick_zenith:.2e} {OUT.barLabel}')
+    log.info(f'At Az={sunAz:.1f}d, El=30d: {pick_sun30:.2e} {OUT.barLabel}')
+
+
+
 
     #======================================================================
     #======================================================================
@@ -839,17 +700,20 @@ def main(args=None):
         #----------------------------------------------------------------------
         # conAn density plot
         if myargs.noconan:
-            logDensity = np.zeros_like(AzEl[0]) - 1000.  # empty sky
+            OUT.logDensity = np.zeros_like(AzEl[0]) - 1000.  # empty sky
         
 
-        cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1], logDensity , 
-                        levels=np.linspace(logMinValue,logMaxValue,100),  # NUMBER OF LEVELS
-                        vmin=logMinValue, vmax=logMaxValue ,
+        cfd = ax.contourf(np.radians(AzEl[0]), 90.-AzEl[1], 
+                        OUT.logDensity , 
+                        levels=np.linspace(OUT.logMinValue,
+                                           OUT.logMaxValue,
+                                           100),  # NUMBER OF LEVELS
+                        vmin=OUT.logMinValue, vmax=OUT.logMaxValue ,
                         extend='both',
-                        cmap=cmap)
+                        cmap=OUT.cmap)
     
-        if cmap == "magma": 
-            cfd.cmap = cpLib.cmap_sky(skyColor, cmap_name=cmap)
+        if OUT.cmap == "magma": 
+            cfd.cmap = cpLib.cmap_sky(skyColor, cmap_name=OUT.cmap)
         cfd.cmap.set_under(skyColor) # below minimum -> black
 
 
@@ -863,14 +727,14 @@ def main(args=None):
         # Scalebar
         if myargs.scalebarflag:
             cbar = fig.colorbar(cfd)
-            cbar.set_ticks( barTicks )
-            cbar.set_ticklabels( barTickLabels)
-            cbar.set_label(barLabel)
+            cbar.set_ticks(      OUT.barTicks )
+            cbar.set_ticklabels( OUT.barTickLabels)
+            cbar.set_label(      OUT.barLabel)
 
             # Title
             x = 1.6
             y = 1.2
-            y = cpLib.put_labels(ax,x,y,.1,codeTitle, fontsize=14, weight='bold', va='top', ha='right')
+            y = cpLib.put_labels(ax,x,y,.1,OUT.title.split(), fontsize=14, weight='bold', va='top', ha='right')
 
 
         #----------------------------------------------------------------------
@@ -893,7 +757,7 @@ def main(args=None):
             plt.text(np.radians(sunAz), 93.,r'$\odot$', va="center", ha='center') # raw string for LaTeX
             
 
-            #top left corner
+            #=== top left corner
             x = -1.
             y = 1.2
             dy = 0.08
@@ -911,10 +775,7 @@ def main(args=None):
                         [f'Limiting magnitude: {myTel.maglim:.1f}'])
                                      
 
-
-
-                    
-            # bottom left
+            #=== bottom left
             loch = int(locTime_h)
             locm = int( (locTime_h-loch)*60.)
 
@@ -931,7 +792,7 @@ def main(args=None):
 
 
 
-            # top right
+            #=== top right
             x=1.
             y=1.2
             cpLib.azlab(ax,x,y,'Constellation:',size=14)
@@ -944,7 +805,7 @@ def main(args=None):
 
 
 
-            #bottom right
+            #===bottom right
             x = 1.
             y = -1.08 
             
@@ -961,7 +822,7 @@ def main(args=None):
                 labels.append("  V$_{sat}$"+f" in [{mag_max:.1f}, {mag_min:.1f}]")
 
 
-            if myargs.output == "effect":
+            if myargs.output == "losses":
                 labels.append("Selection: all satellites, scaled for effect")
                 labels.append(
                     f"Detected: V$_{{eff}}$ < {myTel.maglim:.1f} "+
@@ -970,16 +831,13 @@ def main(args=None):
                 labels.append(selectionLab)
 
 
-            labels.append(f'Value at zenith: {cpLib.format_tick(pick_zenith)};' +
-                          f' at 30$^0$: {cpLib.format_tick(pick_sun30)} [{myUnit}]' )
+            labels.append(f'Value at zenith: {cpLib.format_tick(pick_zenith)};'+
+                          f' at 30$^0$: {cpLib.format_tick(pick_sun30)} [{OUT.unit}]' )
             
     
             y = cpLib.put_labels(ax,x,y,dy,labels)
 
             
-
-
-
 
         # sat count label on almucantars
         if myargs.almuc:
@@ -1007,7 +865,6 @@ def main(args=None):
                                             # sunAlpha[deg]*240 = [s]
 
             
-
 
 
             if myargs.magSelect == "all":
@@ -1087,7 +944,7 @@ def main(args=None):
         'value' :{
             'zenith': pick_zenith,
             'sun30': pick_sun30,
-            'unit': myUnit,
+            'unit': OUT.unit,
             'type': myargs.output},
         'sat': {
             'elev': almucantars,
@@ -1124,9 +981,9 @@ def main(args=None):
 
 if __name__ == "__main__":
 
-    cpLib.init_logger(log)
+    utLib.init_logger(log)
     log.info('===obsSky===')
 
     results = main()
     with open("obsSky.json", "w") as f:
-        json.dump(results, f, indent=4, cls=cpLib.NumpyEncoder) 
+        json.dump(results, f, indent=4, cls=utLib.NumpyEncoder) 

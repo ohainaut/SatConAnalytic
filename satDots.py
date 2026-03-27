@@ -29,6 +29,8 @@ from astropy.table import vstack
 # import ConAn routines
 import SatConAnalytic.conan as caLib
 import SatConAnalytic.conanplot as cpLib
+import SatConAnalytic.telescopes as telescopeLib
+import SatConAnalytic.utils as utLib
 import SatConAnalytic.constants as cCst
 import SatConAnalytic.constellations as constLib
 
@@ -415,7 +417,7 @@ def main(args=None):
     myargs.maglim = None
     myargs.magbloom = None
 
-    myTel = cpLib.getTelescope(myargs)
+    myTel = telescopeLib.getTelescope(myargs)
     log.debug(myTel)
     
 
@@ -592,9 +594,9 @@ def main(args=None):
 #===============================================================================
 if __name__ == "__main__":
  
-    cpLib.init_logger(log)
+    utLib.init_logger(log)
     log.info('===satDots===')
 
     results = main()
     with open("satDots.json", "w") as f:
-        json.dump(results, f, indent=4, cls=cpLib.NumpyEncoder) 
+        json.dump(results, f, indent=4, cls=utLib.NumpyEncoder) 

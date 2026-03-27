@@ -579,38 +579,43 @@ def satGeoVel(alpha,delta,satInc,satAlt):
 
     
     # find nodes omega0 and omega1
-    longr =  np.arcsin(np.tan(np.radians(delta))/np.tan(incr))
+    _arg = np.tan(np.radians(delta))/np.tan(incr)
+    _n_invalid = np.sum(np.abs(_arg) > 1.)
+    if _n_invalid > 0:
+        log.debug(f'Some satellites are not visible ({int(_n_invalid)} occurrence(s)); that\'s OK ')
+    with np.errstate(invalid='ignore'):
+        longr = np.arcsin(_arg)
     
     omegar = np.zeros_like([alphar,alphar])
     omegar[0] = alphar - longr
     omegar[1] = alphar + longr + np.pi
 
     # unit vector normal to orbit
-    N = np.array([ np.sin(omegar)*si,
+    Normal_unitVect = np.array([ np.sin(omegar)*si,
                          -np.cos(omegar)*si,
                          ci + omegar*0.])
 
 
     #satellite unit vectors 
-    S = Pol2Rec((alpha,delta),1.)
+    Sat_unitVect = Pol2Rec((alpha,delta),1.)
 
     # satellite velocities [km/s] = Vel * ( N x S ) 
-    VS = np.cross(N, S, axis=0) * np.sqrt(constants.gravityMu/rs )
+    VS = np.cross(Normal_unitVect, Sat_unitVect, axis=0) * np.sqrt(constants.gravityMu/rs )
 
     if 0:
-        print("[satGeoVel] -----v")
-        print("Nodes:\n", np.degrees(omegar))
-        print("Normal:")
-        print('[:,0]\n',N[:,0])
-        print('[:,1]\n',N[:,1])
-        print("|N|\n",np.linalg.norm(N[:,0],axis=0),np.linalg.norm(N[:,1],axis=0))
-        print("Sat unit vector:\n", S)
-        print("|S|:\n",np.linalg.norm(S,axis=0))
-        print("Vsat:\n",VS)
-        print("[:,0]:\n",VS[:,0])
-        print("[:,1]:\n",VS[:,1])
-        print("|V|",np.linalg.norm(VS[:,0],axis=0),np.linalg.norm(VS[:,1],axis=0))
-        print("[satGeoVel] -----^")
+        log.debug("[satGeoVel] -----v")
+        log.debug(f"Nodes:\n{np.degrees(omegar)}")
+        log.debug("Normal:")
+        log.debug(f'[:,0]\n{Normal_unitVect[:,0]}')
+        log.debug(f'[:,1]\n{Normal_unitVect[:,1]}')
+        log.debug(f"|N|\n{np.linalg.norm(Normal_unitVect[:,0],axis=0)},{np.linalg.norm(Normal_unitVect[:,1],axis=0)}")
+        log.debug(f"Sat unit vector:\n{Sat_unitVect}")
+        log.debug(f"|S|:\n{np.linalg.norm(Sat_unitVect,axis=0)}")
+        log.debug(f"Vsat:\n{VS}")
+        log.debug(f"[:,0]:\n{VS[:,0]}")
+        log.debug(f"[:,1]:\n{VS[:,1]}")
+        log.debug(f"|V| {np.linalg.norm(VS[:,0],axis=0)},{np.linalg.norm(VS[:,1],axis=0)}")
+        log.debug("[satGeoVel] -----^")
 
     return np.nan_to_num(VS)
 

@@ -3,6 +3,7 @@ import numpy as np
 
 import obsSky
 import SatConAnalytic.conanplot as cpLib
+import SatConAnalytic.utils as utLib
 
 
 
@@ -30,7 +31,7 @@ def run_elev(CONST):
 
     outfile = f"data_{O}_{CONST}_{d:.0f}.json"
     with open(outfile, "w") as f:
-        json.dump(results, f, indent=4, cls=cpLib.NumpyEncoder) 
+        json.dump(results, f, indent=4, cls=utLib.NumpyEncoder) 
 
     print(f"Completed data run in {outfile}")
 
@@ -55,7 +56,7 @@ def run_data(CONST):
 
     outfile = f"data_{O}_{CONST}_{d:.0f}.json"
     with open(outfile, "w") as f:
-        json.dump(results, f, indent=4, cls=cpLib.NumpyEncoder) 
+        json.dump(results, f, indent=4, cls=utLib.NumpyEncoder) 
 
     print(f"Completed data run in {outfile}")
 

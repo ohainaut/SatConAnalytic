@@ -23,6 +23,8 @@ from astropy.table import Table
 import numpy as np
 
 import SatConAnalytic.conanplot as cpLib
+import SatConAnalytic.telescopes as telescopeLib
+import SatConAnalytic.utils as utLib
 import SatConAnalytic.skyBrightnessLib as skyLib
 import SatConAnalytic.conan as caLib
 import SatConAnalytic.satDots as satDots
@@ -108,7 +110,7 @@ def main(args=None):
     myargs.fovl = None
     myargs.fovw = None
 
-    myTel = cpLib.getTelescope(myargs)
+    myTel = telescopeLib.getTelescope(myargs)
     log.debug(myTel)
 
     #===========================================================================
@@ -450,5 +452,5 @@ if __name__ == "__main__":
 
     results = main()
     with open("scatteredLight.json", "w") as f:
-        json.dump(results, f, indent=4, cls=cpLib.NumpyEncoder) 
+        json.dump(results, f, indent=4, cls=utLib.NumpyEncoder) 
 

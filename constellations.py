@@ -13,20 +13,13 @@
 import logging, json, os
 import numpy as np
 from astropy.table import Table
-import random
 
 import SatConAnalytic.constants as cCst
 import SatConAnalytic.conan as cLib
+from SatConAnalytic.utils import _Dict
 
 
 log = logging.getLogger('satcon')
-
-#----------------------------------------------------------------------------
-class _Dict(dict):
-    '''convenience: access dict as dict.element.element'''
-    __getattr__= dict.__getitem__
-    __setattr__= dict.__setitem__
-    __delattr__= dict.__delitem__
 
 #---------------------------------------------------------------------------
 def findConstellations(constellationsll, constFile="constellations.json"):
@@ -191,11 +184,11 @@ class OneShell():
           # reshape - some scripts use 2D meshes, some use 3D meshes.
           if len(AzEl.shape) == 3:
                AzElreshape = np.reshape(AzEl,(2,AzEl.shape[1]*AzEl.shape[2]))
-               step = AzEl[1,1,0] - AzEl[1,0,0]
+               #step = AzEl[1,1,0] - AzEl[1,0,0]
           else:
                AzElreshape = AzEl
-               step = 1.
-               
+               #step = 1.
+
           # geocentric equ. alpha,delta of sat, and   observatory dist, angle 
           alpha, delta, Delta, costheta = cLib.AltAz2Delta(
                obsLatitude,self.alt,AzElreshape)
@@ -242,8 +235,10 @@ class OneShell():
           return \
                np.reshape(numDensity_illuminated,
                            (AzEl.shape[1],AzEl.shape[2]) ) ,\
-               np.reshape(wAngularVel, (AzEl.shape[1],AzEl.shape[2]) ),\
-               np.reshape(mag_visual,        (AzEl.shape[1],AzEl.shape[2]) )
+               np.reshape(wAngularVel, 
+                           (AzEl.shape[1],AzEl.shape[2]) ),\
+               np.reshape(mag_visual,        
+                           (AzEl.shape[1],AzEl.shape[2]) )
 
 
 #----------------------------------------------------------------------------
